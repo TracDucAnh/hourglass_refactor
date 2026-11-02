@@ -1,0 +1,9 @@
+# Study 2a — mô hình tí hon K=8 tầng, 4 họ (decoder / encoder / MoE / diffusion).
+K_LAYERS: 8
+D_HEAD: 32
+D_LIST: [64, 96, 128, 192, 256, 384]  # B ~ 0,4–14M tham số không-embedding
+D_MAIN: 192  # d dùng cho các lưới không quét capacity
+D_TWIN: [64, 128, 256, 384]  # d có sinh đôi đơn ngữ (P3)
+AUX_FRAC: 0.2  # tỉ lệ chuỗi trong batch có nhãn phụ (SEM / SURF)
+AUX_W: 1.0  # trọng số loss nhãn phụ so với loss LM trung bình
+MOE_AUX: 0.01  # hệ số load-balancing của MoE

@@ -1,0 +1,51 @@
+# ---- Tài liệu: không đẩy PDF (paper, implementation guide) trong docs/ lên GitHub ----
+docs/**/*.pdf
+
+# ---- Dữ liệu và kết quả thô: không commit (dùng DVC hoặc lưu ngoài) ----
+/data/*
+!/data/README.md
+/outputs/*
+!/outputs/README.md
+# results/: chỉ commit bảng nhỏ (csv/json/md); mảng lớn thì không
+results/**/*.npz
+results/**/*.npy
+results/**/*.pkl
+results/**/*.parquet
+
+# ---- Model / cache ----
+hf_cache/
+checkpoints/
+*.ckpt
+*.safetensors
+wandb/
+lightning_logs/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# ---- LaTeX build ----
+paper/**/*.aux
+paper/**/*.log
+paper/**/*.out
+paper/**/*.bbl
+paper/**/*.blg
+paper/**/*.synctex.gz
+paper/**/*.fdb_latexmk
+paper/**/*.fls
+
+# ---- Hệ thống / bí mật ----
+.DS_Store
+.env
+.env.*
+*.swp
+.idea/
+.vscode/

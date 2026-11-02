@@ -1,0 +1,28 @@
+# Cài: uv run pre-commit install. Chạy tay: uv run pre-commit run --all-files
+# Mã study (src/hourglass/study*/) và notebook gốc (notebooks/archive/) giữ nguyên văn -> không bị hook sửa;
+# tests/test_notebook_parity.py kiểm tra chúng vẫn tương đương với notebook.
+exclude: ^(src/hourglass/study[^/]*/|notebooks/archive/)
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=2000"]
+      - id: detect-private-key
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.3
+    hooks:
+      - id: ruff-check
+        args: ["--fix"]
+        types_or: [python, pyi, jupyter]
+      - id: ruff-format
+        types_or: [python, pyi, jupyter]   # không định dạng code block trong markdown (docs trích mã nguyên văn)
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.8.1
+    hooks:
+      - id: nbstripout   # notebook khám phá: bỏ output trước khi commit

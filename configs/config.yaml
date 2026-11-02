@@ -1,0 +1,12 @@
+# Config gốc, ghép trước mọi experiment (xem src/hourglass/config.py). REPO_ROOT do code điền.
+# Khoá VIẾT HOA = tên hằng trong code của study, đọc bằng param("TÊN", mặc_định).
+#
+# ROOT: đặt biến môi trường HOURGLASS_ROOT để chuyển toàn bộ dữ liệu/kết quả sang ổ khác (vd. /mnt/cl);
+# mặc định là thư mục gốc của repo.
+ROOT: ${oc.env:HOURGLASS_ROOT,${REPO_ROOT}}
+DATA_DIR: ${ROOT}/data              # dữ liệu tải về + đã xử lý (gitignore), dùng chung Study 1 và Study 4
+OUTPUT_DIR: ${ROOT}/outputs         # kết quả thô theo run: .npz, meta.json, checkpoint, cache (gitignore)
+RESULTS_DIR: ${ROOT}/results        # bảng CSV/JSON tổng hợp nhỏ (commit được)
+FIGURE_DIR: ${ROOT}/paper/figures   # hình PDF cho paper
+HF_CACHE_DIR: null                  # vd. ${ROOT}/hf_cache nếu ổ home không đủ chỗ cho ~150GB trọng số
+SEED: 42

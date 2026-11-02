@@ -1,0 +1,50 @@
+# Study 4 — tần suất, loại hình: từ nào / ngôn ngữ nào được chia sẻ ở eo (S3 trên văn bản tự nhiên).
+# Algorithm 5; notebooks/archive/study-4.ipynb. Registry model: src/hourglass/study4_frequency/registry.py.
+defaults:
+  - data/flores_ntrex12
+  - data/lexical
+
+study: study4_frequency
+STUDY_DIR: ${OUTPUT_DIR}/study4          # work*/ (tách từ, gióng hàng, cache, runs), freq*/ (đếm FineWeb-2)
+ANALYSIS_DIR: ${RESULTS_DIR}/study4      # s3_*.csv/npz, mantel, capacity, evidence
+FIG_DIR: ${FIGURE_DIR}/study4
+
+# ---- Truy hồi, GAM, bootstrap, độ bền, điều khiển chạy ----
+RETR_VERSION: 4  # tăng số này khi đổi cách tính truy hồi -> kết quả cũ tự bị coi là "stale"
+HUB_MODE: "type"  # CSLS: "type" = hubness tính trên LOẠI từ (mỗi loại đếm một lần) | "instance" = cách cũ (phạt từ phổ biến) | "cos" = cosine thường
+MAIN_PAIRS: "muse"  # "muse": phân tích chính chỉ dùng cặp thuộc MAIN_SRCS (tiêu chí xác nhận đồng nhất) | "all": mọi cặp
+DROP_UNSEEN: true  # bỏ từ không thấy trong FineWeb-2 (hạng giả V+1) khỏi phân tích chính
+AXIS: "logrank"  # trục x chính: "logrank" (hạng trung bình) | "zipf" (-log10 tần suất/triệu từ, so sánh được giữa ngôn ngữ)
+USE_PMIX: true  # thêm covariate: độ dễ trung bình của các cặp ngôn ngữ mà từ tham gia
+UPOS_SUBSETS_EXCLUDE_PROJECTED: true  # kiểm tra độ bền theo UPOS (content/function) bỏ ngôn ngữ chỉ có UPOS chiếu (không phải gold)
+PROBLEM_LANGS: ["jpn_Jpan", "zho_Hans", "swh_Latn"]  # nhóm ngôn ngữ nghi gây thiên lệch phương pháp: bỏ CÙNG LÚC trong kiểm tra độ bền
+LOO_LANGS: null  # None = leave-one-language-out cho MỌI ngôn ngữ trong tầng chính; hoặc list, vd. ["jpn_Jpan", "zho_Hans"]
+LOO_MIN_WORDS: 500  # bỏ qua tập con có ít dạng từ hơn ngưỡng này
+MANTEL_SCOPE: "main"  # "main": Mantel chỉ dùng cặp tầng chính (ngôn ngữ thiếu cặp bị loại) | "all": mọi cặp. Cell C6 luôn chạy thêm bản "all" (hậu tố _ext)
+MASK_VALID_TRANSLATIONS: true  # B2: che mọi bản dịch HỢP LỆ đã quan sát của từ nguồn (the->le thì la, les không còn là "đối thủ"); False = chỉ che cùng dạng đích (cách cũ)
+RR_VARIANT: "valid"  # biến thể RR dùng cho phân tích CHÍNH: "valid" | "strict". Cả hai đều được lưu; biến thể còn lại chạy thành tập con đối chiếu (rr_strict / rr_valid)
+USE_TRANS_ENT: true  # covariate entropy bản dịch (đa dạng bản dịch của từ) trong GAM
+EDGE_Q: [0.1, 0.9]  # (v5) đầu/đuôi theo PHÂN VỊ DỮ LIỆU của trục x (tiêu chí *_q), thay vì 20% ngoài cùng của lưới x
+CLUSTER_BOOT: true  # bootstrap theo CỤM KHÁI NIỆM (cùng bản dịch tiếng Anh vào/ra mẫu cùng nhau) thay vì từng dòng độc lập
+RUN_COVAR_CHECKS: true  # chạy thêm GAM chỉ-spline, GAM không nsub/độ dài/ngôn ngữ, độ nhạy λ (LAM_SENS) ở tầng waist
+LAM_SENS: [0.1, 10.0]  # nhân λ (GCV) với các hệ số này để xem kết luận có đổi không (λ cố định trong bootstrap)
+SANITY_ON_FAIL: "fp32_check"  # "warn" | "fp32_check" (lệch ở bf16 -> chạy lại sanity bằng fp32) | "abort" (dừng model đó)
+SANITY_LANGS: ["eng_Latn", "zho_Hans"]  # ngôn ngữ dùng cho sanity batch-vs-single (trước đây chỉ eng)
+EXTRACT_DTYPE: "float32"  # None = bf16 trên GPU; "float32" nếu sanity chỉ qua ở fp32 (cần nhiều VRAM hơn; hạ tok_budget trong A2 nếu OOM)
+CSLS_K: 10  # giống Study 1
+RETR_CHUNK: 4096  # chia khối khi đếm hạng (giới hạn bộ nhớ GPU)
+POOL_N: 1000  # kích thước tập ứng viên cố định để so sánh GIỮA CÁC CẶP (Mantel); thực tế = min(POOL_N, số cặp từ ít nhất)
+POOL_REPS: 20  # số lần rút mẫu con cho mỗi cặp
+N_KNOTS: 12  # số nút trong của B-spline bậc 3
+X_QUANT: [0.01, 0.99]  # đoạn log-hạng dùng để ước lượng đỉnh (cắt 1% hai đuôi cho spline ổn định)
+GAM_QUANT: [0.0, 1.0]  # GAM dùng toàn bộ đoạn x sau khi đã cắt đuôi bằng prep_main (không clip -> không có khối điểm dồn ở biên)
+N_BOOT: 1000  # bootstrap theo TỪ (đơn vị = một dạng từ trong một ngôn ngữ)
+BOOT_CHUNK: 250
+CV_FOLDS: 5
+MANTEL_PERMS: 100000
+MIN_INST_PER_TYPE: 1
+RUN_MODELS: null  # None = mọi model đã đăng ký (core + sweep + 2b nếu có); hoặc list key, vd. ["xlmr_large", "qwen3_8b"]
+FORCE_RERUN: false
+KEEP_WORD_CACHE: false  # False = xoá cache biểu diễn mức từ sau khi đã lưu kết quả truy hồi (Qwen3-8B ~50GB; trích lại chỉ vài phút)
+SANITY_CHECK: true  # kiểm tra batch-vs-single 1 lần cho mỗi model
+WORD_BUF_GPU_GB: 12.0  # buffer biểu diễn của MỘT ngôn ngữ nằm trên GPU nếu nhỏ hơn ngưỡng này, ngược lại nằm trên CPU

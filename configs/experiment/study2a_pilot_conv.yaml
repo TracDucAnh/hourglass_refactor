@@ -1,0 +1,6 @@
+# Study 2a — lưới pilot hội tụ: chọn BATCH / SEQ_MULT nhỏ nhất mà kết quả đã ổn định (Cell C5b),
+# rồi sửa BATCH / SEQ_MULT (trong code: config.py, hoặc override -o BATCH=... -o SEQ_MULT=...) và đóng băng.
+defaults:
+  - experiment/study2a
+
+RUN_GRIDS: ["pilot_conv"]

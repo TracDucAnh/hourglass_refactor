@@ -1,0 +1,3 @@
+# Dữ liệu song song 12 ngôn ngữ (FLORES-200 devtest, NTREX-128) — dùng chung Study 1 và Study 4 (Table 8).
+LANGS: ["eng_Latn", "fra_Latn", "rus_Cyrl", "hin_Deva", "zho_Hans", "vie_Latn", "tur_Latn", "arb_Arab", "jpn_Jpan", "fin_Latn", "swh_Latn", "tha_Thai"]
+N_SENT: null  # None = dùng toàn bộ (FLORES devtest 1012, NTREX 1997). Đặt 200 để test nhanh

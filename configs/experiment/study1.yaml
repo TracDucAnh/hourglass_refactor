@@ -1,0 +1,27 @@
+# Study 1 — hourglass ở 4 họ mô hình mở (P1, S6). Algorithm 1; notebooks/archive/study-1.ipynb.
+# 15 model (3 encoder + ByT5, 6 dense decoder, 3 MoE, 2 diffusion) + random-init mỗi kiến trúc; FLORES-200 + NTREX-128.
+# Registry model nằm trong src/hourglass/study1_open_models/registry.py.
+defaults:
+  - data/flores_ntrex12
+
+study: study1_open_models
+STUDY_DIR: ${OUTPUT_DIR}/study1          # {dataset}/{run_id}/{variant}.npz + meta.json
+ANALYSIS_DIR: ${RESULTS_DIR}/study1      # features_*.csv, p1_summary_*.json, curves_*.csv
+FIG_DIR: ${FIGURE_DIR}/study1
+
+# ---- Siêu tham số đo ----
+N_SHUFFLES: 1000  # shuffled-pair baseline (Eq. 18)
+N_BOOT: 1000  # bootstrap theo content (95% CI)
+CSLS_K: 10  # số láng giềng cho hubness correction của CSLS
+D_PCA: 64  # số chiều PCA trước khi khớp phép xoay Procrustes (fit nửa này, chấm nửa kia)
+PROBE_SEEDS: 3  # số cách chia content train/test cho probe M4
+MASK_LEVELS: [0.0, 0.25, 0.5, 0.75]  # diffusion: tỉ lệ token bị che
+N_MASK_DRAWS: 8  # số lần che ngẫu nhiên / câu / mức che (>0)
+
+# ---- Điều khiển chạy ----
+DATASETS_TO_RUN: ["flores", "ntrex"]
+RUN_MODELS: null  # None = cả 15 model; hoặc list key, vd. ["xlmr_base", "qwen3_1.7b", "olmoe"]
+NTREX_MODEL_KEYS: ["xlmr_base", "qwen3_1.7b", "olmoe", "llada_8b"]  # NTREX lặp ở 3 mô hình đại diện + 2 diffusion. None = tất cả
+RUN_RANDOM_BASELINES: true
+FORCE_RERUN: false
+SANITY_CHECK: true  # kiểm tra batch-vs-single (padding) 1 lần cho mỗi model

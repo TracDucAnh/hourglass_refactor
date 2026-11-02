@@ -1,0 +1,7 @@
+# Cổng G1 (kế hoạch, Study 1): chạy trước trên XLM-R base, Qwen3-1.7B, một MoE (~3 GPU-giờ).
+# Phải có G_k* > 0 so với null ở ít nhất một dense; nếu không, sửa số đo, chưa huấn luyện gì.
+defaults:
+  - experiment/study1
+
+RUN_MODELS: ["xlmr_base", "qwen3_1.7b", "olmoe"]
+DATASETS_TO_RUN: ["flores"]

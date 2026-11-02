@@ -1,0 +1,14 @@
+# Study 2a — ngôn ngữ tổng hợp (Phần S). Các cỡ phụ thuộc SMOKE (N_EVAL, N_PROBE, BPE_VOCAB, BPE_MAX_TYPES)
+# để mặc định trong code (_S(full, smoke)); đặt khoá ở đây sẽ đè cả khi SMOKE=true.
+
+# Pool huấn luyện (mỗi câu = một nội dung mới, một ngôn ngữ). Notebook gốc: 400_000 -> quá nhỏ: pilot_conv cho thấy
+# val chỉ phẳng sau ~15 epoch (b1024x2) khi gap val-trn đã ~0.33, và b1024x4 overfit (val tăng lại, gap ~1.2).
+# 1.6M: cùng 6.1M chuỗi (b1024x2) chỉ còn ~3.8 epoch. world_id KHÔNG chứa N_POOL -> STUDY_DIR của study2a có hậu tố
+# _pool${N_POOL} để không dùng lại world / run đã cache với pool cũ.
+N_POOL: 1600000
+MAX_LEN: 64  # chiều dài chuỗi (token); câu <= MAX_SENT_TOK + 2 (bos/eos), chừa chỗ cho hậu tố nhãn
+MAX_SENT_TOK: 60
+MIN_WORDS: 3  # R27: câu ngắn hơn bị loại (giảm mơ hồ chéo ngôn ngữ ở giao diện cân bằng)
+MAX_DEPTH: 4  # R25
+HELDOUT_PCT: 5  # R28: % tổ hợp (vị ngữ, danh từ arg0, danh từ arg1) bị giữ ra
+N_SEM_CLS: 50

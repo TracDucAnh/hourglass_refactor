@@ -1,0 +1,18 @@
+# Study 2a — ngôn ngữ tổng hợp, hourglass có điều khiển (P1, P2, P3, S2–S6). Algorithm 2; notebooks/archive/study-2a.ipynb.
+# Thứ tự cổng: G0 (make g0) -> study2a_pilot_conv -> study2a_gate_g2 -> study2a_grids.
+defaults:
+  - data/synthetic
+  - model/tiny_lm
+  - trainer/synthetic_v2
+
+study: study2_synthetic
+STUDY_DIR: ${OUTPUT_DIR}/study2a_pool${N_POOL}   # worlds/, runs/ (code tự thêm _smoke khi SMOKE=true)
+ANALYSIS_DIR: ${RESULTS_DIR}/study2a
+FIG_DIR: ${FIGURE_DIR}/study2a
+
+SMOKE: false  # True: chạy thử cực nhỏ (vài phút, lưu ở study2a_smoke/) để kiểm tra đường ống trước khi chạy thật
+MASK_LEVELS: [0.0, 0.25, 0.5, 0.75]  # diffusion (S6)
+D_PCA: 64
+N_RANK_BINS: 12  # S3: bin theo floor(log2(hạng)) của danh từ (hạng 1..2500 -> 0..11)
+FORCE_RERUN: false
+RUN_GRIDS: ["pilot_conv"]  # pilot_conv | gate_g2 | smoke | p1p2 | balanced | moe_diff | p3s2 | s4 | s5 | heldout_p4

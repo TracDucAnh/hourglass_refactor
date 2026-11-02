@@ -1,0 +1,5 @@
+# Study 4, model nhỏ nhanh trước để kiểm tra (gợi ý của Cell C2): XLM-R large, rồi mới tới Qwen3-8B và các model sweep.
+defaults:
+  - experiment/study4
+
+RUN_MODELS: ["xlmr_large"]

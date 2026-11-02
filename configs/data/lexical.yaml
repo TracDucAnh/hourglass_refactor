@@ -1,0 +1,27 @@
+# Study 4 — tách từ, tần suất FineWeb-2, gióng hàng Eflomal + xác nhận từ điển (MUSE / lemma / Wiktionary).
+MEASURE_SETS: ["flores", "flores_dev", "ntrex"]  # ["flores"] = hành vi cũ (1012 câu). Ba nguồn = ~4000 câu x 12 ngôn ngữ
+MEAS: "all"  # tên split của corpus gộp (cache words/, align/)
+FW_TAG: "_200M"  # đổi khi đổi FW_MAX_WORDS_*: cache tần suất tách thư mục, không lẫn bản cũ
+FW_MAX_DOCS_PER_LANG: 2000000  # v3: trước 100_000 (thực tế bị chặn bởi 20M từ)
+FW_MAX_WORDS_PER_LANG: 200000000  # v3: 10x (trước 20M). Mục tiêu: tỉ lệ dạng từ FLORES/NTREX 'unseen' < ~1% và hạng đuôi bớt nhiễu
+FW_WORDS_OVERRIDE: {"zho_Hans": 100000000, "jpn_Jpan": 100000000, "tha_Thai": 100000000, "vie_Latn": 100000000}  # bộ tách từ chậm (jieba/fugashi/newmm/pyvi)
+EFLOMAL_MODEL: 3  # 1 = IBM1, 2 = +HMM, 3 = +fertility
+MAX_WORDS_SENT: 120  # bỏ câu quá dài khi gióng hàng
+CONFIRM_MODE: "muse"  # "muse" (kế hoạch: giữ cặp được MUSE xác nhận) | "none"
+FALLBACK_DICE: true  # cặp ngôn ngữ ít hơn MIN_PAIR_ITEMS cặp từ được MUSE xác nhận -> xác nhận bằng Dice thống kê (ghi rõ trong bảng)
+DICE_MIN: 0.4
+DICE_MIN_COUNT: 2
+MIN_PAIR_ITEMS: 200
+DROP_SAME_FORM: true  # bỏ cặp từ cùng dạng chữ (tên riêng, vay mượn): dễ khớp nhờ trùng subword, không phản ánh chia sẻ nghĩa
+DROP_NUMERIC: true
+MUSE_ZH_T2S: true  # MUSE zh-en là phồn thể (體, 球隊) còn corpus là giản thể -> đổi MUSE zh sang giản thể khi nạp
+ALT_KEY_LANGS: ["jpn_Jpan"]  # ngôn ngữ tra từ điển bằng THÊM dạng gốc (orthBase/lemma). CHỈ ảnh hưởng bước xác nhận bằng từ điển;
+ALT_DICT: true  # ngôn ngữ MUSE không có (swh): thử từ điển thay thế (tệp người dùng, hoặc Wiktionary qua kaikki.org) [XM]
+MAIN_SRCS: ["muse"]  # nguồn xác nhận tính vào PHÂN TÍCH CHÍNH. Cặp có nguồn khác ("alt", "dice") = TẦNG MỞ RỘNG, báo cáo riêng
+UPOS_PROJECT: true  # ngôn ngữ không có tagger (swh): chiếu UPOS từ các ngôn ngữ có tagger qua liên kết Eflomal (Cell A6b)
+LEMMA_LANGS: ["arb_Arab", "eng_Latn", "fin_Latn", "fra_Latn", "hin_Deva", "jpn_Jpan", "rus_Cyrl", "tur_Latn"]  # Bước 1: khoá tra phụ = lemma Stanza (Cell A6a). zho/vie không biến cách (lemma = dạng bề mặt); swh/tha không có Stanza
+WIKT_DICT: true  # Bước 2: hợp thêm Wiktionary (kaikki.org) vào từ điển của MỌI ngôn ngữ có MUSE (swh đã dùng Wiktionary làm từ điển chính, nhãn 'alt')
+WIKT_CODES: null  # None = mọi mã MUSE_CODE; hoặc tập con, vd {"fi", "tr", "ru"}
+WIKT_KEEP_RAW: false  # giữ tệp JSONL thô sau khi trích (mỗi ngôn ngữ vài trăm MB – vài GB)
+WIKT_FORCE_REBUILD: false  # True = dựng lại mọi từ điển Wiktionary (kể cả swh bản cũ chưa có dạng biến cách)
+ITEM_MAX_TIER: 2  # bậc xác nhận cao nhất được đưa vào ITEMS: 0 = từ điển gốc (hành vi v5) | 1 = +lemma | 2 = +Wiktionary. Đổi -> chạy lại build_items + C2

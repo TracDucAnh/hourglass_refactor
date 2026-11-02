@@ -1,0 +1,6 @@
+# Cổng G2: một cấu hình decoder M4/SEM, 3 seed. Phải có U_0/log L ≈ 1 ở embedding, có eo và hội tụ;
+# đo thời gian thực mỗi run rồi nhân lại ngân sách cho toàn lưới (stage gate_report).
+defaults:
+  - experiment/study2a
+
+RUN_GRIDS: ["gate_g2"]

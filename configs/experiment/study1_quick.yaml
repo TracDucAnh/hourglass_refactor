@@ -1,0 +1,5 @@
+# Study 1, kiểm tra nhanh đường ống: 200 câu (kết quả vào thư mục *_n200 riêng, không lẫn kết quả thật).
+defaults:
+  - experiment/study1
+
+N_SENT: 200
