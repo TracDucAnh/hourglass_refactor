@@ -31,7 +31,7 @@ def _S(full, small):
 SEED = param("SEED", 42)
 
 # ---- Ngôn ngữ tổng hợp / dữ liệu ----
-N_POOL       = param("N_POOL", _S(400_000, 12_000))   # số câu trong pool huấn luyện (mỗi câu = một nội dung mới, một ngôn ngữ)
+N_POOL       = param("N_POOL", _S(1_600_000, 12_000))   # số câu trong pool huấn luyện (mỗi câu = một nội dung mới, một ngôn ngữ)
 N_EVAL       = param("N_EVAL", _S(3000, 300))         # nội dung giữ ra để đo (x L ngôn ngữ)
 N_PROBE      = param("N_PROBE", _S(2000, 300))         # tập dò S3: danh từ chủ ngữ lấy đều theo hạng
 BPE_VOCAB    = param("BPE_VOCAB", _S(8000, 1200))        # số ký hiệu BPE chung (ký tự + merge)
@@ -58,7 +58,7 @@ D_TWIN   = param("D_TWIN", [64, 128, 256, 384])              # d có sinh đôi 
 #   steps  = STEPS_REF * (BATCH_REF / BATCH) * SEQ_MULT        (tổng chuỗi = BATCH_REF * STEPS_REF * SEQ_MULT)
 #   warmup = WARMUP_REF * (BATCH_REF / BATCH) * SEQ_MULT       (tỉ lệ theo số bước)
 #   lr đỉnh nhân (BATCH / BATCH_REF) ** LR_BATCH_EXP           (0.5 = căn bậc hai)
-# Mặc định BATCH=1024, SEQ_MULT=2 (6000 bước, ~15 epoch) là ƯỚC LƯỢNG. CHỐT bằng lưới `pilot_conv` (Cell C5b) rồi đóng băng.
+# Mặc định BATCH=1024, SEQ_MULT=2 (6000 bước, ~3,8 epoch trên pool 1,6M) là ƯỚC LƯỢNG. CHỐT bằng lưới `pilot_conv` (Cell C5b) rồi đóng băng.
 BATCH_REF  = param("BATCH_REF", _S(256, 64))
 STEPS_REF  = param("STEPS_REF", _S(12000, 150))
 WARMUP_REF = param("WARMUP_REF", _S(500, 15))

@@ -4,7 +4,7 @@ defaults:
   - experiment/study2a
 
 SMOKE: true
-N_POOL: 12000                 # cỡ smoke của notebook (_S(400_000, 12_000))
+N_POOL: 12000                 # cỡ smoke của notebook (_S(1_600_000, 12_000))
 RUN_GRIDS: ["smoke"]
 ANALYSIS_DIR: ${OUTPUT_DIR}/study2a_smoke/analysis
 FIG_DIR: ${OUTPUT_DIR}/study2a_smoke/figures
