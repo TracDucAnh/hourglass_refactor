@@ -8,13 +8,12 @@ Theo *Implementation Guides* (kế hoạch LE-D, mục 1, 3, 4) và mục 5 củ
 | Study (paper) | Package | Notebook gốc | Experiment (`configs/experiment/`) | Kết quả thô → bảng → hình |
 |---|---|---|---|---|
 | Study 1 — hourglass ở 4 họ mô hình mở (Algorithm 1) | `src/hourglass/study1_open_models/` | `study-1.ipynb` | `study1`, `study1_gate_g1`, `study1_quick` | `outputs/study1/` → `results/study1/` → `paper/figures/study1/` |
-| Study 2a — ngôn ngữ tổng hợp (Algorithm 2; gồm 3a, 3d) | `src/hourglass/study2_synthetic/` | `study-2a.ipynb` | `study2a`, `study2a_smoke`, `study2a_pilot_conv`, `study2a_gate_g2`, `study2a_grids` | `outputs/study2a/` → `results/study2a/` → `paper/figures/study2a/` |
+| Study 2a — ngôn ngữ tổng hợp (Algorithm 2; gồm 3a, 3d) | `src/hourglass/study2_synthetic/` | `study-2a.ipynb` | `study2a`, `study2a_smoke`, `study2a_pilot_conv`, `study2a_gate_g2`, `study2a_grids`, `study2a_{decoder,encoder,moe,diffusion}` | `outputs/study2a/` → `results/study2a/` → `paper/figures/study2a/` |
 | Study 4 — tần suất, loại hình (Algorithm 5) | `src/hourglass/study4_frequency/` | `study-4.ipynb` | `study4`, `study4_pilot` | `outputs/study4/` → `results/study4/` → `paper/figures/study4/` |
 
 **Chưa có trong repo** (kế hoạch có, chưa có notebook): Study 2b/2c (`study3_natural/` — huấn luyện tự nhiên từ đầu,
 sinh đôi đơn ngữ), Study 3 (probe XNLI/UPOS, chiếu bỏ, 3b/3c), Study 5 (dự báo P4). Study 4 tự đăng ký các model 2b
-nếu có checkpoint ở `{ROOT}/study3_natural/checkpoints/<tên>/`; Study 2a xuất `p4_inputs_for_study5.csv` làm đầu vào
-cho Study 5.
+nếu có checkpoint ở `{ROOT}/study3_natural/checkpoints/<tên>/`.
 
 Tên package theo kế hoạch (mục 3): `common/` ← các study; các study không import lẫn nhau. `study4_frequency`
 (thay vì `study4_analysis` của kế hoạch) vì notebook Study 4 tự trích biểu diễn từ model, không chỉ đọc kết quả.
@@ -23,16 +22,16 @@ Tên package theo kế hoạch (mục 3): `common/` ← các study; các study k
 
 | | Phép thử (kế hoạch mục 1) | Chạy ở | Mã kiểm định | Đầu ra chính |
 |---|---|---|---|---|
-| P1 | Hourglass ở 4 họ; cánh giao diện cân bằng | Study 1; 2a (`p1p2`, `balanced`, `moe_diff`) | S1: `analysis.py` (`feature_table`); 2a: `analysis/hypotheses.py` (`test_P1`) | `results/study1/features_*.csv`, `p1_summary_*.json`; `results/study2a/table_P1.csv` |
+| P1 | Hourglass ở 4 họ | Study 1; 2a (`p1p2`, `moe_diff`) | S1: `analysis.py` (`feature_table`); 2a: `analysis/hypotheses.py` (`test_P1`) | `results/study1/features_*.csv`, `p1_summary_*.json`; `results/study2a/table_P1.csv` |
 | P2 | 3 tác vụ LM / SEM / SURF | 2a (`p1p2`) | `test_P2` | `results/study2a/hypotheses_summary.csv` |
-| P3 | Cặp sinh đôi đơn ngữ ΔA | 2a (`p3s2`); 2b (chưa có) | `test_P3` | `results/study2a/table_P3.csv` |
-| P4 | Dự báo cấu hình giữ ra | 2a (`heldout_p4`) → Study 5 (chưa có) | `report.py` | `results/study2a/p4_inputs_for_study5.csv` |
+| P3 | Cặp sinh đôi đơn ngữ ΔA | 2b (chưa có); đã bỏ khỏi 2a | — | — |
+| P4 | Dự báo cấu hình giữ ra | Study 5 (chưa có); đã bỏ khỏi 2a | — | — |
 | S1 | Probe chuyển giao | Study 3 (chưa có) | — | — |
-| S2 | Lưới capacity × L | 2a (`p3s2`) | `test_S2` | báo cáo 2a |
-| S3 | Căn chỉnh theo log-hạng | 2a (tập dò S3); Study 4 | 2a: `test_S3`; S4: `analysis/s3.py`, `analysis/shape.py` | `results/study4/s3_*`, `results/study2a/...` |
-| S4 | Thiết kế 2 × 2 pivot | 2a (`s4`) | `test_S4` + `logit_lens.py` | báo cáo 2a |
-| S5 | Quét len_scale | 2a (`s5`) | `test_S5` | báo cáo 2a |
-| S6 | Mức che ở diffusion | Study 1 (LLaDA, Dream); 2a (`moe_diff`) | S1: `diffusion_s6_table`; 2a: `test_S6` | `results/study1/diffusion_masklevels_*.csv`; `results/study2a/table_S6.csv` |
+| S2 | Lưới capacity × L | 2b (chưa có); đã bỏ khỏi 2a | — | — |
+| S3 | Căn chỉnh theo log-hạng | 2a (tập dò S3, bổ trợ, tiêu chí nới); Study 4 | 2a: `test_S3`; S4: `analysis/s3.py`, `analysis/shape.py` | `results/study4/s3_*`, `results/study2a/...` |
+| S4 | Thiết kế 2 × 2 pivot | 2b, Study 4; đã bỏ khỏi 2a | — | — |
+| S5 | Quét len_scale | Study 5 (chưa có); đã bỏ khỏi 2a | — | — |
+| S6 | Mức che ở diffusion | Study 1 (LLaDA, Dream) | `diffusion_s6_table` | `results/study1/diffusion_masklevels_*.csv` |
 
 ## Cổng
 

@@ -11,10 +11,5 @@
 # Bỏ comment từng dòng khi cần. Thứ tự gợi ý theo giá trị khoa học / chi phí.
 # ============================================================
 run_grid("p1p2")        # 108 run: P1 (decoder, encoder), P2
-run_grid("balanced")    #  24 run: cánh cân bằng giao diện (A1)
 run_grid("moe_diff")    #  36 run: MoE + diffusion (P1, S6)
-run_grid("p3s2")        # 180 run (+72 sinh đôi): P3, S2, S3
-run_grid("s4")          #  24 run: S4 (pivot)
-run_grid("s5")          #  30 run: S5
-run_grid("heldout_p4")  #  48 run: giữ ra cho P4 (đầu vào của Study 5)
 show_status()

@@ -4,7 +4,7 @@ O  ?=            # override tham số, vd: make study1 O='-o RUN_MODELS=[xlmr_ba
 
 .PHONY: help install install-core lint format test test-fast g0 \
         study1-g1 study1 study2a-smoke study2a-pilot study2a-gate study2a-grids \
-        study2a-all study4-prepare study4-pilot study4 figures clean
+        study2a-all study2a-decoder study2a-encoder study2a-moe study2a-diffusion study2a-report study4-prepare study4-pilot study4 figures clean
 
 help:           ## Liệt kê lệnh
 	@grep -E '^[a-zA-Z0-9_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -51,8 +51,23 @@ study2a-gate:   ## Cổng G2 + dự toán GPU-giờ
 study2a-grids:  ## Toàn bộ lưới chính + phân tích
 	scripts/sweep.sh grids $(O)
 
-study2a-all:    ## MAIN RESULTS 2a trọn gói: G2 (chỉ báo cáo) + 450 run lưới chính + thử lại run lỗi + phân tích
+study2a-all:    ## MAIN RESULTS 2a trọn gói: G2 (chỉ báo cáo) + 144 run lưới chính (p1p2, moe_diff) + thử lại run lỗi + phân tích
 	scripts/sweep.sh all $(O)
+
+study2a-decoder:   ## Chỉ họ decoder (gate_g2, p1p2); chia GPU: O='-o SHARD=0/2'
+	$(PY) scripts/train.py study2a_decoder status $(O)
+
+study2a-encoder:   ## Chỉ họ encoder (p1p2); chia GPU: O='-o SHARD=0/2'
+	$(PY) scripts/train.py study2a_encoder status $(O)
+
+study2a-moe:       ## Chỉ họ MoE (moe_diff)
+	$(PY) scripts/train.py study2a_moe status $(O)
+
+study2a-diffusion: ## Chỉ họ diffusion (moe_diff)
+	$(PY) scripts/train.py study2a_diffusion status $(O)
+
+study2a-report:    ## Phân tích + hình + báo cáo Study 2a (sau khi mọi họ chạy xong)
+	$(PY) scripts/make_figures.py study2a $(O)
 
 # ---------------------------------------------------------------- Study 4 (cần extra study4)
 study4-prepare: ## Dữ liệu Study 4: tách từ, tần suất FineWeb-2, Eflomal, ITEMS (CPU, lâu, có cache)

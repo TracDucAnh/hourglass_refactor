@@ -12,7 +12,7 @@
 #   M4: usable information U_k (probe tuyến tính và MLP, chia nhóm theo nội dung)
 #   S3: G theo bin hạng danh từ (rank_alignment)
 # ============================================================
-METRIC_VERSION = 2   # v2: probe U (đoán ngôn ngữ) giữ lại tâm từng ngôn ngữ. v1 trừ mất tâm -> U ≈ 0 ở mọi tầng (lỗi đo).
+METRIC_VERSION = 3   # v3: họ causal (decoder, MoE) đo ở token nội dung cuối. v2: probe U giữ lại tâm từng ngôn ngữ. v1 trừ mất tâm -> U ≈ 0 (lỗi đo).
 
 def _standardize_keep_lang(Z):
     """Z [L,N,d]: chuẩn hóa từng chiều trên (L,N) nhưng KHÔNG trừ trung bình từng ngôn ngữ.
@@ -127,35 +127,6 @@ def compute_metrics(Z, seed=SEED, probes=True, desc="số đo theo tầng", prog
     return dict(G=G, D=D, CKA=CKA, A=A, g_content=g_content.astype(np.float16), sig2=sig2,
                 U_lin=U_lin, U_mlp=U_mlp, U_acc=U_acc,
                 pair_a=np.array([p[0] for p in pairs]), pair_b=np.array([p[1] for p in pairs]))
-
-@torch.no_grad()
-def procrustes_between(ZA, ZB, seed=SEED):
-    """A_k giữa HAI MÔ HÌNH độc lập (ZA, ZB: [K1,N,d] fp16): quay khớp trên nửa nội dung, chấm trên nửa còn lại.
-    Dùng cho A_indep của cặp sinh đôi; cùng thủ tục với A trong compute_metrics."""
-    K1, N, d = ZA.shape
-    perm0 = np.random.default_rng(seed).permutation(N)
-    tr = torch.tensor(np.sort(perm0[: N // 2]), device=DEVICE); te = torch.tensor(np.sort(perm0[N // 2:]), device=DEVICE)
-    d_pca = int(min(D_PCA, len(tr) - 1, d))
-    out = np.full(K1, np.nan, np.float32); cka = np.full(K1, np.nan, np.float32)
-    for k in range(K1):
-        Zs = [ (lambda z: (z - z.mean(0)) / z.std(0, correction=0).clamp_min(1e-6))(Z_[k].to(DEVICE).float()) for Z_ in (ZA, ZB)]
-        Zs = [z - z.mean(0) for z in Zs]
-        torch.manual_seed(seed + k)
-        Pp = []
-        for z in Zs:
-            Xtr = z[tr] - z[tr].mean(0, keepdim=True)
-            _, _, V = torch.pca_lowrank(Xtr, q=d_pca, center=False, niter=3)
-            Pl = z @ V[:, :d_pca]
-            Pp.append(Pl / (Pl[tr].norm() / math.sqrt(len(tr))).clamp_min(1e-8))
-        Uu, _, Vh = torch.linalg.svd(Pp[0][tr].T @ Pp[1][tr])
-        out[k] = float(1.0 - (Pp[1][te] - Pp[0][te] @ (Uu @ Vh)).square().sum() / Pp[1][te].square().sum().clamp_min(1e-12))
-        Ks = [z @ z.T for z in Zs]
-        for K_ in Ks: K_.fill_diagonal_(0)
-        def hs(Ka, Kb):
-            n = Ka.shape[0]
-            return ((Ka * Kb).sum() + Ka.sum() * Kb.sum() / ((n - 1) * (n - 2)) - 2.0 / (n - 2) * (Ka.sum(1) * Kb.sum(1)).sum()) / (n * (n - 3))
-        cka[k] = float(hs(Ks[0], Ks[1]) / (hs(Ks[0], Ks[0]) * hs(Ks[1], Ks[1])).clamp_min(1e-12).sqrt())
-    return out, cka
 
 @torch.no_grad()
 def rank_alignment(Zn, ranks):

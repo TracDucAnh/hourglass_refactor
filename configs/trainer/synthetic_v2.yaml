@@ -1,8 +1,7 @@
 # Study 2a — giao thức huấn luyện v2 (sửa để hội tụ). BATCH_REF, STEPS_REF, WARMUP_REF, BATCH, SEQ_MULT,
 # EVAL_BS, VAL_N, VAL_BS phụ thuộc SMOKE nên giữ mặc định trong code; chốt BATCH/SEQ_MULT bằng lưới pilot_conv.
 LR_BATCH_EXP: 0.5
-TRAIN_VERSION: 2  # run có train_version khác sẽ bị chạy lại / bị loại khỏi phân tích (v1 = 750 bước, chưa hội tụ)
+TRAIN_VERSION: 3  # run có train_version khác sẽ bị chạy lại / bị loại khỏi phân tích (v1 = 750 bước, chưa hội tụ; v2 = mọi họ cùng ngân sách)
 CONV_TOL: 0.02  # nats: val còn giảm hơn mức này trong ~1/6 số bước cuối -> chưa hội tụ
 OVERFIT_TOL: 0.1  # nats: val - trn lớn hơn mức này -> nghi nhớ thuộc lòng (cần thêm mẫu mới, không thêm epoch)
-TWIN_MAX_EPOCH: 20  # trần số epoch cho mô hình sinh đôi (mỗi twin chỉ có N_POOL/L câu của một ngôn ngữ)
 GATE_MIN_K: 2  # cổng G2: đỉnh G ở khối đầu tiên (k*=1) không được coi là waist

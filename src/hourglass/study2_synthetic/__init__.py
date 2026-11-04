@@ -1,4 +1,4 @@
-"""Study 2a — Ngôn ngữ tổng hợp: hourglass có điều khiển (P1, P2, P3, S2–S6).
+"""Study 2a — Ngôn ngữ tổng hợp: hourglass có điều khiển (P1, P2; S3 bổ trợ).
 
 Mã giữ nguyên văn từ notebooks/archive/study-2a.ipynb, tách thành các file theo chức năng và nạp vào một
 namespace chung bằng ``load()`` (xem ``hourglass.workspace``).
@@ -17,6 +17,7 @@ DEFAULT_EXPERIMENT = "study2a"
 # cell code của notebook gốc không chuyển thành mã (đối chiếu trong tests/test_notebook_parity.py)
 DROPPED_CELLS = {
     0: "cài package (%uv pip) -> pyproject.toml",
+    24: "logit-lens (S4) -> ngoài phạm vi Study 2a (chỉ P1, P2, S3)",
     42: "cell rỗng",
 }
 
@@ -43,8 +44,6 @@ STEPS = [
          desc="Trích biểu diễn gộp theo từ (Cell B3)", cells=(22,)),
     Step("metrics", "lib", "metrics.py", gpu=True,
          desc="Số đo M1–M4 (Cell B4)", cells=(23,)),
-    Step("logit_lens", "lib", "logit_lens.py", gpu=True,
-         desc="Logit-lens: ngôn ngữ trục (S4) (Cell B5)", cells=(24,)),
     Step("grids", "lib", "grids.py", gpu=False,
          desc="Định nghĩa lưới + run_id (Cell C1)", cells=(26,)),
     Step("runner", "lib", "runner.py", gpu=False,

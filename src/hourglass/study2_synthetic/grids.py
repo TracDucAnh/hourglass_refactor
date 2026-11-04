@@ -13,10 +13,10 @@ FAMILIES = ["decoder", "encoder", "moe", "diffusion"]
 TASKS = ["LM", "SEM", "SURF"]
 
 def make_cfg(grid, family="decoder", level="M4", task="SEM", d=D_MAIN, L=4, overlap=0, len_scale=1.0,
-             len_scale_X=None, share_X=None, seed=0, twins=False, lens=False, bs=None, seq_mult=None, tag=None):
+             len_scale_X=None, share_X=None, seed=0, bs=None, seq_mult=None, tag=None):
     """bs / seq_mult / tag: chỉ dùng cho lưới pilot_conv (ghi đè batch và hệ số nhân tổng chuỗi cho riêng run đó)."""
     return dict(grid=grid, family=family, level=level, task=task, d=d, L=L, overlap=overlap, len_scale=len_scale,
-                len_scale_X=len_scale_X, share_X=share_X, seed=seed, twins=twins, lens=lens, bs=bs, seq_mult=seq_mult, tag=tag)
+                len_scale_X=len_scale_X, share_X=share_X, seed=seed, bs=bs, seq_mult=seq_mult, tag=tag)
 
 def run_id(c):
     ls = f"{c['len_scale']:g}" + (f"X{c['len_scale_X']:g}" if c["len_scale_X"] else "")
@@ -35,25 +35,14 @@ def grid_configs(name):
     if name == "gate_g2":
         return [make_cfg("gate_g2", seed=s) for s in range(3)]
     if name == "smoke":
-        out = [make_cfg("smoke", family=f, d=64, L=3, task="SEM", twins=(f == "decoder"), lens=(f == "decoder")) for f in FAMILIES]
+        out = [make_cfg("smoke", family=f, d=64, L=3, task="SEM") for f in FAMILIES]
         return out + [make_cfg("smoke", family="decoder", d=64, L=3, task="LM", overlap=100, level="M2")]
     if name == "p1p2":
         return [make_cfg("p1p2", family=f, level=lv, task=t, seed=s)
                 for f in ("decoder", "encoder") for lv in LEVELS for t in TASKS for s in range(6)]
-    if name == "balanced":
-        return [make_cfg("balanced", overlap=100, level=lv, task=t, seed=s) for lv in ("M0", "M4") for t in ("LM", "SEM") for s in range(6)]
     if name == "moe_diff":
         return [make_cfg("moe_diff", family=f, task=t, seed=s) for f in ("moe", "diffusion") for t in TASKS for s in range(6)]
-    if name == "p3s2":
-        return [make_cfg("p3s2", d=d, L=L, seed=s, twins=(d in D_TWIN and s < 6)) for d in D_LIST for L in (2, 4, 8) for s in range(10)]
-    if name == "s4":
-        return [make_cfg("s4", share_X=sx, len_scale_X=lx, seed=s, lens=True) for sx in (None, 0.4) for lx in (0.7, 1.6) for s in range(6)]
-    if name == "s5":
-        return [make_cfg("s5", len_scale=ls, seed=s) for ls in (0.6, 0.8, 1.0, 1.4, 2.0) for s in range(6)]
-    if name == "heldout_p4":
-        return [make_cfg("heldout_p4", d=d, L=L, len_scale=ls, seed=s, twins=True)
-                for L in (3, 6) for d in (80, 160, 224) for ls in (0.7, 0.9, 1.2, 1.7) for s in range(2)]
     raise KeyError(name)
 
-ALL_GRIDS = ["pilot_conv", "gate_g2", "smoke", "p1p2", "balanced", "moe_diff", "p3s2", "s4", "s5", "heldout_p4"]
+ALL_GRIDS = ["pilot_conv", "gate_g2", "smoke", "p1p2", "moe_diff"]
 print({g: len(grid_configs(g)) for g in ALL_GRIDS})

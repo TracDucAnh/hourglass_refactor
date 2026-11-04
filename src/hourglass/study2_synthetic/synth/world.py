@@ -123,9 +123,11 @@ def build_world(wcfg, verbose=True):
     arrays.update(eval_ids=ev_ids, eval_wid=ev_wid, probe_ids=pr_ids, probe_wid=pr_wid, probe_subj=pr_subj,
                   probe_rank=pr_rank, tok_lang=tok_lang)
     base = f"{WORLD_DIR}/{world_id(wcfg)}"
-    np.savez_compressed(base + ".tmp.npz", **arrays); os.replace(base + ".tmp.npz", base + ".npz")
-    with open(base + ".json", "w", encoding="utf-8") as f:
+    tmp = f"{base}.{os.getpid()}.tmp"     # tên tạm riêng từng tiến trình: các họ chạy song song có thể dựng cùng một thế giới
+    np.savez_compressed(tmp + ".npz", **arrays); os.replace(tmp + ".npz", base + ".npz")
+    with open(tmp + ".json", "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False)
+    os.replace(tmp + ".json", base + ".json")
     if verbose:
         print(f"[world] {meta['id']}: pool={meta['n_pool']}  vocab={meta['vocab_total']}  fertility={[round(x, 2) for x in fert]}  "
               f"roundtrip_fail={ver['rate_roundtrip_fail']:.4f}  parsed_by_other={ver['rate_parsed_by_other']:.4f}  ({meta['seconds']}s)")

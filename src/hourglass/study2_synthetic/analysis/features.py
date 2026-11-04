@@ -46,9 +46,8 @@ def scan_runs():
                 continue
             rows.append(dict(rid=rid, **c, seconds=m["seconds"], loss=m["final_lm_loss"], params=m["params_nonemb"],
                              val_loss=m.get("val_loss"), conv_drop=m.get("conv_drop"), converged=m.get("converged"),
-                             twin_excess_loss=m.get("twin_excess_loss", np.nan),
                              fert_mean=float(np.mean(m["fertility"])), fert_X=float(m["fertility"][0]),
-                             fert_list=m["fertility"], has_twins=os.path.exists(f"{RUN_DIR}/{rid}/twins.npz")))
+                             fert_list=m["fertility"]))
     return pd.DataFrame(rows)
 
 _CV = {}
@@ -137,11 +136,6 @@ def build_feature_table(save=True):
         row["U_at_kstar_over_logL"] = float(c["U"][f["k_star"]] / math.log(r.L))
         row["Umlp_at_kstar_over_logL"] = float(c["Um"][f["k_star"]] / math.log(r.L))
         row["ln_params"] = math.log(r.params)
-        if r.family == "diffusion":
-            for t in MASK_LEVELS[1:]:
-                ft = feat(r.rid, f"t{t:g}")
-                if ft:
-                    row[f"rho_t{t:g}"], row[f"S_edge_t{t:g}"], row[f"G_last_t{t:g}"], row[f"kstar_t{t:g}"] = ft["rho_star"], ft["S_edge"], ft["G_last"], ft["k_star"]
         rows.append(row)
     df = pd.DataFrame(rows).drop(columns=["Index"], errors="ignore")
     if save and len(df):

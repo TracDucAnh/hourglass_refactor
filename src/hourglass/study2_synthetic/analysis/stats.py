@@ -52,23 +52,6 @@ def jonckheere_terpstra(groups):
 def _aicc(sse, n, k):
     return n * math.log(max(sse, 1e-12) / n) + 2 * k + 2 * k * (k + 1) / max(n - k - 1, 1)
 
-def step_vs_linear(x, y):
-    """x (vd. log2 d), y: quan sát cấp seed. So mô hình bậc thang một điểm gãy với đường thẳng bằng AICc.
-    Trả về (ΔAICc = AICc_tuyến_tính - AICc_bậc_thang, chỉ số điểm gãy trong các x duy nhất)."""
-    x, y = np.asarray(x, float), np.asarray(y, float)
-    ok = np.isfinite(y); x, y = x[ok], y[ok]; n = len(y)
-    if n < 8 or len(np.unique(x)) < 3:
-        return np.nan, -1
-    b, a = np.polyfit(x, y, 1)
-    aic_lin = _aicc(float(np.square(y - (a + b * x)).sum()), n, 3)
-    ux = np.unique(x); best = (np.inf, -1)
-    for i in range(len(ux) - 1):
-        lo = x <= ux[i]
-        sse = float(np.square(y[lo] - y[lo].mean()).sum() + np.square(y[~lo] - y[~lo].mean()).sum())
-        if sse < best[0]:
-            best = (sse, i)
-    return aic_lin - _aicc(best[0], n, 4), best[1]
-
 def tcrit_band(M):
     """M [R,K] -> (mean, lo, hi) CI95 (t) qua R run (seed)."""
     M = np.asarray(M, float); R = M.shape[0]
@@ -83,10 +66,6 @@ def sel(df, **kw):
     for k, v in kw.items():
         out = out[out[k].isin(v)] if isinstance(v, (list, tuple, set)) else out[out[k] == v]
     return out
-
-def _has(x):
-    """pandas đổi None thành NaN: NaN không phải 'có giá trị' (vd. share_X, len_scale_X của lưới không dùng)."""
-    return x is not None and not (isinstance(x, float) and math.isnan(x))
 
 def _res(hyp, verdict, evidence, table=None):
     return dict(hyp=hyp, verdict=verdict, evidence=evidence, table=table)

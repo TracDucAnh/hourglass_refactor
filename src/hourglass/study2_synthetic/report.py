@@ -12,8 +12,8 @@
 def build_report(df, results):
     L_ = []; w = L_.append
     w(f"# Báo cáo Study 2a — ngôn ngữ tổng hợp ({datetime.now():%Y-%m-%d %H:%M})\n")
-    w("> Mọi kết luận chỉ ở **quy mô nhỏ, trong ngôn ngữ tổng hợp** (≤ 14M tham số, K = 8). Kết quả âm chưa bác bỏ LE-D ở quy mô lớn; "
-      "P4 (dự báo ngoài mẫu) thuộc Study 5, ở đây chỉ xuất bảng đầu vào.\n")
+    w("> Mọi kết luận chỉ ở **quy mô nhỏ, trong ngôn ngữ tổng hợp** (d = 192, K = 8). Kết quả âm chưa bác bỏ LE-D ở quy mô lớn. "
+      "Phạm vi 2a: P1 (có waist), P2 (waist theo tác vụ), S3 (chữ U ngược theo tần suất, bổ trợ).\n")
     cov = df.groupby("grid").size().to_dict() if len(df) else {}
     w("## Phạm vi dữ liệu\n"); w("| lưới | run hoàn thành |\n|---|---|")
     for g_, n_ in cov.items():
@@ -35,14 +35,12 @@ def build_report(df, results):
     if "converged" in df.columns and (df.converged == False).any():
         w(f"\n> ⚠ {int((df.converged == False).sum())}/{len(df)} run chưa đạt tiêu chí hội tụ (val còn giảm >= {CONV_TOL} nats ở ~1/6 bước cuối): "
           "waist của các run này có thể là artifact của giai đoạn huấn luyện; xem cột `conv_drop` trong features_all_runs.csv.")
-    if "twin_excess_loss" in df.columns and (df.twin_excess_loss > 0.10).any():
-        w(f"\n> ⚠ {int((df.twin_excess_loss > 0.10).sum())} run có twin kém mô hình chung > 0.10 nats: ΔA (P3) có thể bị thổi phồng.")
     w("\n## Hình\n")
     for f_ in sorted(os.listdir(FIG_DIR)):
         w(f"- `figures/{f_}`")
     w("\n## Lưu ý đọc kết quả\n- Waist của từng run theo tiêu chí Study 1 (đỉnh G trong thân, CI dưới của edge depth > 0.05, CKA khớp, vượt `init`).\n"
       "- Hình hourglass lý tưởng của Corollary 1 (quay lại H(Λ) ở tầng cuối) hiếm khi đạt: so G_K với G_0 trong bảng đặc trưng.\n"
-      "- S6 mới kiểm k* không dịch khi đổi mức che; việc tách riêng Pha III cần thêm phép đo ở các tầng cuối.\n")
+      "- Biểu diễn câu: họ causal (decoder, MoE) lấy ở token nội dung cuối; họ hai chiều (encoder, diffusion) trung bình theo từ.\n")
     txt = "\n".join(L_)
     with open(f"{ANALYSIS_DIR}/report_study2a.md", "w", encoding="utf-8") as f:
         f.write(txt)
@@ -52,23 +50,11 @@ def build_report(df, results):
             r["table"].to_csv(f"{ANALYSIS_DIR}/table_{r['hyp']}.csv", index=False)
     return txt
 
-def export_p4_inputs(df):
-    """Đầu vào cho Study 5 (không kiểm định ở đây): ρ*, w, ΔA, fertility của các cấu hình giữ ra và của lưới huấn luyện."""
-    rows = []
-    for r in df[df.grid.isin(["p3s2", "heldout_p4", "s5", "gate_g2", "smoke"])].itertuples():
-        dA = _delta_A(r) if r.has_twins else None
-        rows.append(dict(rid=r.rid, grid=r.grid, L=r.L, d=r.d, ln_params=r.ln_params, len_scale=r.len_scale, seed=r.seed, fert_mean=r.fert_mean,
-                         rho_star=r.rho_star, w=r.w, S_edge=r.S_edge, dA_kstar=float(np.nanmean(dA[:, r.k_star])) if dA is not None else np.nan))
-    out = pd.DataFrame(rows)
-    out.to_csv(f"{ANALYSIS_DIR}/p4_inputs_for_study5.csv", index=False)
-    return out
-
 def regenerate_all():
     df = build_feature_table()
     if df.empty:
         print("Chưa có run nào hoàn thành trong", RUN_DIR); return None, []
     res = run_all_tests(df)
-    export_p4_inputs(df)
     make_all_figures(df)
     txt = build_report(df, res)
     print(txt)

@@ -24,7 +24,6 @@ plt.rcParams.update({"pdf.fonttype": 42, "axes.spines.top": False, "axes.spines.
                      "grid.alpha": 0.25, "font.size": 9, "axes.labelsize": 9, "legend.fontsize": 8, "figure.dpi": 110})
 C = dict(LM="#1f77b4", SEM="#d62728", SURF="#2ca02c", init="#7f7f7f", o0="#1f77b4", o100="#ff7f0e",
          decoder="#1f77b4", encoder="#9467bd", moe="#2ca02c", diffusion="#d62728")
-LCOL = {2: "#1f77b4", 3: "#17becf", 4: "#ff7f0e", 6: "#8c564b", 8: "#2ca02c"}
 KP = K_LAYERS
 RHO = np.arange(KP + 1) / KP
 

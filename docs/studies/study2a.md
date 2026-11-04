@@ -1,9 +1,83 @@
-# Study 2a — Ngôn ngữ tổng hợp (P1, P2, P3, S2–S6)
+# Study 2a — Ngôn ngữ tổng hợp (P1, P2; S3 bổ trợ)
 
 > Ghi chú gốc của `notebooks/archive/study-2a.ipynb` (chép nguyên văn các cell markdown, theo thứ tự).
 > Mã tương ứng: `src/hourglass/study2_synthetic/`; chạy bằng `python -m hourglass stages study2a` để xem các bước.
 > Lưu ý: đường dẫn `/mnt/cl/...` và tên "Cell A1, B2..." trong ghi chú là của notebook; trong repo, đường dẫn
 > lấy từ `configs/` và mỗi cell là một file (xem header của file).
+
+## Phạm vi (v3)
+
+Study 2a chỉ kiểm **ba** giả thuyết trên ngôn ngữ tổng hợp, không so sánh trực tiếp với Study 1:
+
+| Giả thuyết | Vai trò | Câu hỏi | Dữ liệu | Tiêu chí (`analysis/hypotheses.py`) |
+|---|---|---|---|---|
+| **P1** | chính | Cả 4 họ đều có waist? | `p1p2`, `moe_diff` (overlap 0 %, M4, LM+SEM) | mỗi họ: ≥ 80 % run có waist và edge depth vượt `init` (Wilcoxon p < 0,05); bảng tách thêm LM / SEM |
+| **P2** | chính | Waist đi theo tác vụ (LM / SEM / SURF)? | `p1p2` (decoder, encoder × M0/M2/M4) | như v2 (Jonckheere–Terpstra, Wilcoxon SEM > SURF, TOST "eo cố định"), Holm trong từng mức |
+| **S3** | bổ trợ | Căn chỉnh tại waist theo tần suất khái niệm là chữ U ngược? | tập dò S3 của mọi run overlap 0 % | **nới**: độ cong trung bình theo seed < 0 (Wilcoxon p < 0,05) và ≥ 50 % run cong xuống với đỉnh nằm trong khoảng hạng; không kiểm đỉnh dịch theo capacity |
+
+Đã bỏ khỏi 2a: P3 (sinh đôi đơn ngữ), P4, S2, S4 (logit-lens), S5, S6 (mức che diffusion), cánh `balanced`, cùng các lưới
+`balanced`, `p3s2`, `s4`, `s5`, `heldout_p4`. Các cell tương ứng vẫn còn trong notebook gốc nhưng đã được sửa / bỏ cho
+khớp với mã (`logit_lens` là cell 24 trong `DROPPED_CELLS`).
+
+**Biểu diễn câu theo họ.** Họ hai chiều (encoder, diffusion): trung bình sub-token theo từ rồi trung bình các từ. Họ causal
+(decoder, MoE): trạng thái ở **token nội dung cuối** — vị trí duy nhất đã thấy cả câu. (Trung bình theo từ với họ causal
+trộn các tiền tố khác nhau khi trật tự từ khác nhau — SVO / SOV / VSO ở M2, M4 — nên thiên lệch có lợi cho họ hai chiều.)
+Tập dò S3 vẫn dùng vector của từ danh từ chủ ngữ cho mọi họ.
+
+## Chạy theo từng họ mô hình
+
+Mỗi họ có một experiment riêng; chạy mỗi họ trong một tiến trình / GPU. Cả bốn ghi chung
+`outputs/study2a_pool1600000/` (worlds/, runs/), nên chỉ phân tích **một lần** sau khi cả bốn xong.
+
+| Họ | Experiment | Lưới | Ngân sách (`SEQ_MULT`, epoch trên pool 1,6M) | Lệnh |
+|---|---|---|---|---|
+| decoder | `study2a_decoder` | gate_g2 (3) + p1p2 (54) = 57 run | ×2 = 6 000 bước ≈ 3,8 epoch | `make study2a-decoder` |
+| encoder | `study2a_encoder` | p1p2 (54 run) | ×4 = 12 000 bước ≈ 7,7 epoch | `make study2a-encoder` |
+| MoE | `study2a_moe` | moe_diff (18 run) | ×3 = 9 000 bước ≈ 5,8 epoch | `make study2a-moe` |
+| diffusion | `study2a_diffusion` | moe_diff (18 run) | ×5 = 15 000 bước ≈ 9,6 epoch | `make study2a-diffusion` |
+
+```bash
+# mỗi dòng một terminal / tmux pane; train.py chạy run_grids rồi in bảng status của họ đó
+CUDA_VISIBLE_DEVICES=0 uv run python scripts/train.py study2a_decoder   status
+CUDA_VISIBLE_DEVICES=1 uv run python scripts/train.py study2a_encoder   status
+CUDA_VISIBLE_DEVICES=2 uv run python scripts/train.py study2a_moe       status
+CUDA_VISIBLE_DEVICES=3 uv run python scripts/train.py study2a_diffusion status
+
+# sau khi cả bốn xong: đặc trưng + kiểm định + hình + báo cáo (results/study2a/, paper/figures/study2a/)
+make study2a-report        # = uv run python scripts/make_figures.py study2a
+```
+
+**Cân tải.** Tính theo tổng số bước huấn luyện, encoder nặng nhất (54 × 12 000 ≈ 650 nghìn bước), gần gấp đôi decoder
+(57 × 6 000 ≈ 340 nghìn) và gấp ~4 MoE hoặc diffusion. Bố trí cân hơn: chia encoder làm 2 shard bằng `SHARD=k/n`
+(mỗi shard nhận run thứ k, k+n, ... của mỗi lưới; các shard không trùng nhau) và chạy MoE rồi diffusion nối tiếp:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run python scripts/train.py study2a_decoder status
+CUDA_VISIBLE_DEVICES=1 uv run python scripts/train.py study2a_encoder status -o SHARD=0/2
+CUDA_VISIBLE_DEVICES=2 uv run python scripts/train.py study2a_encoder status -o SHARD=1/2
+CUDA_VISIBLE_DEVICES=3 bash -c 'for f in moe diffusion; do uv run python scripts/train.py study2a_$f status; done'
+```
+`n` phải giữ nguyên trong suốt đợt chạy (đổi `n` giữa chừng thì các shard chia khác nhau, có thể chạy trùng run).
+Theo dõi tiến độ của một họ: `uv run python scripts/train.py study2a_<họ> status` (run đã xong được bỏ qua).
+
+**Thay đổi so với v2** (vì sao phải chạy lại từ đầu):
+1. **Ngân sách theo họ.** v2 dùng chung ×2 cho mọi họ (chốt bằng `pilot_conv` chỉ trên decoder): encoder 0/54 và
+   diffusion 1/18 run hội tụ. v3 đặt `SEQ_MULT` riêng trong từng file `configs/experiment/study2a_<họ>.yaml`
+   (mọi họ vẫn chạy trọn lịch lr cosine, không early stopping). Các giá trị cho encoder / MoE / diffusion là ước lượng
+   (chưa có pilot riêng): sau khi chạy, kiểm lại cột `converged` / `conv_drop`.
+2. **Token cuối cho họ causal** (xem trên). `METRIC_VERSION = 3`.
+3. **Thu hẹp phạm vi** còn P1, P2, S3 (xem trên); P1 tách thêm theo tác vụ (ở v2, decoder và MoE không có waist ở LM
+   nhưng có ở SEM / SURF — kết luận gộp LM+SEM che mất điều này); S3 dùng tiêu chí nới.
+4. **An toàn khi chạy song song.** Thế giới (`worlds/`) được ghi bằng tên tạm riêng từng tiến trình rồi đổi tên
+   nguyên tử: nhiều họ dựng cùng một thế giới cùng lúc (vd. decoder và encoder của `p1p2`) không làm hỏng file.
+
+**Chạy lại từ đầu / ghi đè.** `TRAIN_VERSION = 3` và `METRIC_VERSION = 3`: mọi run cũ (v2) tự động bị **huấn luyện
+lại và ghi đè** trong `runs/`, và bị loại khỏi phân tích; không cần `FORCE_RERUN` (`FORCE_RERUN=true` sẽ chạy lại cả
+run v3 đã xong khi khởi động lại tiến trình). Run v2 của các lưới đã bỏ (`p3s2`, `s4`, ...) nằm lại trong `runs/` nhưng
+không được đọc (khác `train_version`). Repo không lưu checkpoint mô hình, chỉ lưu số đo. `worlds/` là dữ liệu tất định
+(cùng cấu hình ⇒ cùng nội dung), được dùng lại; muốn dựng lại hẳn thì xoá `outputs/study2a_pool1600000/worlds/` trước
+khi chạy. `results/study2a/` và `paper/figures/study2a/` bị ghi đè khi chạy `make study2a-report` (file cũ của các giả
+thuyết đã bỏ, vd. `table_P3.csv`, không tự xoá).
 
 ---
 

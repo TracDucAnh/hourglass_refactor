@@ -46,9 +46,7 @@ N_SEM_CLS    = param("N_SEM_CLS", 50)
 # ---- Mô hình / huấn luyện (Study 2a, kế hoạch mục 4) ----
 K_LAYERS = param("K_LAYERS", 8)
 D_HEAD   = param("D_HEAD", 32)
-D_LIST   = param("D_LIST", [64, 96, 128, 192, 256, 384])     # B ~ 0,4–14M tham số không-embedding
 D_MAIN   = param("D_MAIN", 192)                              # d dùng cho các lưới không quét capacity
-D_TWIN   = param("D_TWIN", [64, 128, 256, 384])              # d có sinh đôi đơn ngữ (P3)
 
 # ---- Batch / số bước (GIAO THỨC HUẤN LUYỆN v2) ----
 # Chẩn đoán từ cổng G2 cũ (chỉ 750 bước cập nhật với batch rất lớn, 7,7 epoch): loss LM ~5,3 (eval ~5,05) so với SÀN entropy của ngôn ngữ
@@ -65,7 +63,7 @@ WARMUP_REF = param("WARMUP_REF", _S(500, 15))
 BATCH        = param("BATCH", _S(1024, 64))       # A100 80GB: logits fp32 là phần tốn nhất (~2,4 GB / 1024 chuỗi)
 SEQ_MULT     = param("SEQ_MULT", _S(2.0, 1.0))       # hệ số nhân tổng số chuỗi so với cấu hình tham chiếu (256 x 12000)
 LR_BATCH_EXP = param("LR_BATCH_EXP", 0.5)
-TRAIN_VERSION = param("TRAIN_VERSION", 2)                 # run có train_version khác sẽ bị chạy lại / bị loại khỏi phân tích (v1 = 750 bước, chưa hội tụ)
+TRAIN_VERSION = param("TRAIN_VERSION", 3)                 # run có train_version khác sẽ bị chạy lại / bị loại khỏi phân tích (v1 = 750 bước, chưa hội tụ; v2 = mọi họ cùng ngân sách)
 
 def train_hparams(bs=None, seq_mult=None):
     """Siêu tham số huấn luyện cho một run (bs/seq_mult = None -> mặc định toàn cục). Dùng cho lưới pilot_conv."""
@@ -84,15 +82,12 @@ VAL_N      = param("VAL_N", _S(2048, 128))        # số chuỗi giữ ra (tổ 
 VAL_BS     = param("VAL_BS", _S(512, 64))          # batch khi đo val (logits fp32: 512 x 63 x V ~ 1,2 GB)
 CONV_TOL   = param("CONV_TOL", 0.02)                 # nats: val còn giảm hơn mức này trong ~1/6 số bước cuối -> chưa hội tụ
 OVERFIT_TOL = param("OVERFIT_TOL", 0.10)                # nats: val - trn lớn hơn mức này -> nghi nhớ thuộc lòng (cần thêm mẫu mới, không thêm epoch)
-TWIN_MAX_EPOCH = param("TWIN_MAX_EPOCH", 20)               # trần số epoch cho mô hình sinh đôi (mỗi twin chỉ có N_POOL/L câu của một ngôn ngữ)
 GATE_MIN_K = param("GATE_MIN_K", 2)                    # cổng G2: đỉnh G ở khối đầu tiên (k*=1) không được coi là waist
 AUX_FRAC = param("AUX_FRAC", 0.20)          # tỉ lệ chuỗi trong batch có nhãn phụ (SEM / SURF)
 AUX_W    = param("AUX_W", 1.0)           # trọng số loss nhãn phụ so với loss LM trung bình
 MOE_AUX  = param("MOE_AUX", 0.01)          # hệ số load-balancing của MoE
 
 # ---- Đo ----
-MASK_LEVELS  = param("MASK_LEVELS", [0.0, 0.25, 0.5, 0.75])    # diffusion (S6)
-N_MASK_DRAWS = param("N_MASK_DRAWS", _S(4, 2))
 PROBE_SEEDS  = param("PROBE_SEEDS", _S(2, 1))
 D_PCA        = param("D_PCA", 64)
 N_BOOT       = param("N_BOOT", _S(500, 100))
@@ -100,8 +95,10 @@ N_RANK_BINS  = param("N_RANK_BINS", 12)                         # S3: bin theo f
 
 # ---- Điều khiển chạy ----
 RUN_GRIDS   = param("RUN_GRIDS", ["pilot_conv"])  # CHẠY pilot_conv TRƯỚC (chốt BATCH/SEQ_MULT) -> gate_g2 -> các lưới còn lại. Xem Cell C1:
-                              # pilot_conv | gate_g2 | smoke | p1p2 | balanced | moe_diff | p3s2 | s4 | s5 | heldout_p4
+                              # pilot_conv | gate_g2 | smoke | p1p2 | moe_diff
 FORCE_RERUN = param("FORCE_RERUN", False)
+FAMILY      = param("FAMILY", None)   # None = mọi họ | "decoder" | "encoder" | "moe" | "diffusion": run_grid chỉ chạy run của họ này (mỗi họ một tiến trình/GPU)
+SHARD       = param("SHARD", None)    # None | "k/n": sau khi lọc FAMILY, chỉ chạy run thứ k, k+n, k+2n... của mỗi lưới (chia một họ cho n GPU)
 print(f"[config] STUDY_DIR={STUDY_DIR}  SMOKE={SMOKE}  N_POOL={N_POOL}\n"
       f"[config] giao thức v{TRAIN_VERSION}: BATCH={BATCH} (ref {BATCH_REF})  STEPS={STEPS} (ref {STEPS_REF})  WARMUP={WARMUP}  "
       f"lr_scale={LR_SCALE:.2f}  SEQ_MULT={SEQ_MULT:g}  EVAL_BS={EVAL_BS}  -> {BATCH * STEPS / N_POOL:.1f} epoch")

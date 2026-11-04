@@ -42,6 +42,11 @@ make study1            # 15 model + random-init, FLORES + NTREX (~20 GPU-giờ)
 make g0                # cổng G0: testcase bộ sinh + số đo (CPU, ~10 s)
 make study2a-smoke     # cả đường ống ở cỡ cực nhỏ (CPU được, vài phút)
 make study2a-pilot     # chốt BATCH / SEQ_MULT  ->  make study2a-gate (G2)  ->  make study2a-grids
+make study2a-decoder   # hoặc chạy từng họ song song (mỗi họ một GPU, xem docs/studies/study2a.md):
+make study2a-encoder   #   study2a-{decoder,encoder,moe,diffusion}, rồi make study2a-report
+make study2a-moe
+make study2a-diffusion
+make study2a-report
 
 # Study 4 (extra study4; bước chuẩn bị chạy lâu nhưng có cache)
 make study4-prepare    # tách từ + UPOS, đếm FineWeb-2, Eflomal + MUSE/Wiktionary -> ITEMS
