@@ -1,10 +1,9 @@
 # Study 2a — chỉ họ DECODER (causal). Một tiến trình / GPU; chạy song song với study2a_{encoder,moe,diffusion}.
 # Mọi họ ghi chung STUDY_DIR (worlds/, runs/) -> phân tích một lần sau khi cả bốn xong: scripts/make_figures.py study2a.
 # Biểu diễn câu của họ causal = trạng thái ở token nội dung cuối (xem runner.measure).
-# Ngân sách: x2 = 6000 bước x batch 1024 ≈ 3.8 epoch trên pool 1.6M (đã chốt bằng pilot_conv; ~80% run p1p2 hội tụ ở v2).
+# Ngân sách: SEQ_MULT_FAMILY.decoder = x2 ≈ 3.8 epoch (study2a.yaml). mask_ablation / anchors: chẩn đoán điểm neo (12 run decoder).
 defaults:
   - experiment/study2a
 
 FAMILY: decoder
-SEQ_MULT: 2.0
-RUN_GRIDS: ["gate_g2", "p1p2"]
+RUN_GRIDS: ["gate_g2", "p1p2", "mask_ablation", "anchors"]

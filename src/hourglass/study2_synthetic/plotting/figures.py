@@ -10,6 +10,7 @@
 # Cell D5 — Hình (mỗi hình ứng với một giả thuyết)
 # ============================================================
 def fig_P1(df):
+    df = sel(df, grid=["gate_g2", "p1p2", "moe_diff", "smoke"])                              # không gồm lưới chẩn đoán
     fams = [f for f in FAMILIES if len(sel(df, family=f, level="M4", overlap=0, task=["LM", "SEM"]))]
     if not fams:
         return print("[P1] chưa có dữ liệu")

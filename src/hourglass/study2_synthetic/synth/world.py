@@ -14,20 +14,20 @@
 #    Nhãn kèm theo: sem (hạng vị ngữ, cắt 50 lớp), surf (độ dài ký tự x ký tự đầu của từ THỨ HAI).
 #  - eval: N_EVAL nội dung giữ ra (R28) x L ngôn ngữ, song song theo cấu trúc; wid = chỉ số từ của từng token (-1: đặc biệt/pad).
 #  - probe: N_PROBE khung 'V0(N ADJ)' với danh từ chủ ngữ lấy log-đều theo hạng (S3); subj = chỉ số từ của danh từ chủ ngữ.
-def world_cfg(L, level, overlap, len_scale, seed, len_scale_X=None, share_X=None):
+def world_cfg(L, level, overlap, len_scale, seed, len_scale_X=None, share_X=None, anchor=0.0):
     ls = [len_scale] * L
     if len_scale_X is not None:
         ls[0] = len_scale_X                              # ngôn ngữ X = chỉ số 0
     sh = [1.0 / L] * L
     if share_X is not None:
         sh = [share_X] + [(1 - share_X) / (L - 1)] * (L - 1)
-    return dict(L=L, level=level, overlap=overlap, len_scales=tuple(ls), shares=tuple(sh), seed=seed)
+    return dict(L=L, level=level, overlap=overlap, len_scales=tuple(ls), shares=tuple(sh), seed=seed, anchor=anchor)
 
 def world_id(w):
     ls, sh = w["len_scales"], w["shares"]
     lst = f"{ls[0]:g}" if len(set(ls)) == 1 else "-".join(f"{x:g}" for x in ls)
     sht = "eq" if max(sh) - min(sh) < 1e-9 else "-".join(f"{x:.2f}" for x in sh)
-    return f"L{w['L']}_{w['level']}_ov{w['overlap']}_ls{lst}_sh{sht}_s{w['seed']}" + ("_smoke" if SMOKE else "")
+    return f"L{w['L']}_{w['level']}_ov{w['overlap']}_ls{lst}_sh{sht}_s{w['seed']}" + (f"_a{w['anchor']:g}" if w.get("anchor") else "") + ("_smoke" if SMOKE else "")
 
 def _encode_sentence(bpe, words):
     ids, wid = [BOS], [-1]
@@ -61,8 +61,8 @@ def _render_eval(specs, bpe, contents, probe=False):
 def build_world(wcfg, verbose=True):
     t0 = time.time()
     L, seed = wcfg["L"], wcfg["seed"]
-    specs = make_languages(L, wcfg["level"], wcfg["overlap"], list(wcfg["len_scales"]), seed)
-    alphabet = sorted({ch for s in specs for ch in s.C + s.V})
+    specs = make_languages(L, wcfg["level"], wcfg["overlap"], list(wcfg["len_scales"]), seed, wcfg.get("anchor", 0.0))
+    alphabet = sorted({ch for s in specs for ch in s.C + s.V + s.anchor_letters})
     letter_idx = {c: i for i, c in enumerate(alphabet)}
     n_cls_surf = 8 * len(alphabet)
     assert n_cls_surf <= N_LABEL, "tăng N_LABEL"

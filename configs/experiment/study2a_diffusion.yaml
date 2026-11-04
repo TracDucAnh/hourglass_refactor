@@ -1,8 +1,7 @@
 # Study 2a — chỉ họ DIFFUSION (MDLM/LLaDA, hai chiều). Một tiến trình / GPU; chạy song song với study2a_{decoder,encoder,moe}.
-# Ngân sách: ở v2 (x2) chỉ 1/18 run hội tụ -> x5 = 15000 bước x batch 1024 ≈ 9.6 epoch trên pool 1.6M (sát trần 10 epoch).
+# Ngân sách: ở v2 (x2) chỉ 1/18 run hội tụ -> SEQ_MULT_FAMILY.diffusion = x5 ≈ 9.6 epoch (study2a.yaml).
 defaults:
   - experiment/study2a
 
 FAMILY: diffusion
-SEQ_MULT: 5.0
 RUN_GRIDS: ["moe_diff"]

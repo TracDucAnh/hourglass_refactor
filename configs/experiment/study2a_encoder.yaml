@@ -1,9 +1,8 @@
 # Study 2a — chỉ họ ENCODER (MLM, hai chiều). Một tiến trình / GPU; chạy song song với study2a_{decoder,moe,diffusion}.
 # Ngân sách: MLM chỉ học từ 15% token mỗi chuỗi -> ở v2 (x2, cùng ngân sách decoder) 0/54 run hội tụ.
-# x4 = 12000 bước x batch 1024 ≈ 7.7 epoch trên pool 1.6M (dưới trần 10 epoch). Kiểm lại cột `converged` sau khi chạy.
+# SEQ_MULT_FAMILY.encoder = x4 ≈ 7.7 epoch (study2a.yaml). mask_ablation: chẩn đoán điểm neo [MASK] (6 run encoder).
 defaults:
   - experiment/study2a
 
 FAMILY: encoder
-SEQ_MULT: 4.0
-RUN_GRIDS: ["p1p2"]
+RUN_GRIDS: ["p1p2", "mask_ablation"]

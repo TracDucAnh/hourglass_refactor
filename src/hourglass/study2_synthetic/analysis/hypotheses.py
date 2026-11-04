@@ -14,7 +14,7 @@ def test_P1(df):
     """P1: cả bốn họ có waist (G_k, D_k dip so với mô hình chưa huấn luyện) trên ngôn ngữ tổng hợp (overlap 0%, M4, LM+SEM).
     Bảng có thêm từng tác vụ riêng để thấy tác vụ nào thiếu waist."""
     rows = []
-    d0 = sel(df, overlap=0, level="M4", task=["LM", "SEM"])
+    d0 = sel(df, overlap=0, level="M4", task=["LM", "SEM"], grid=["gate_g2", "p1p2", "moe_diff", "smoke"])    # không gồm lưới chẩn đoán
     for fam in FAMILIES:
         s = sel(d0, family=fam)
         for task, x in [("LM+SEM", s), ("LM", sel(s, task="LM")), ("SEM", sel(s, task="SEM"))]:
@@ -98,6 +98,7 @@ def test_S3(df):
         if c is None or "Grank" not in c:
             continue
         c2, pk = _inverted_u(c["Grank"][r.k_star], c["rank_counts"])[:2]
+        pk = pk if c2 < 0 else np.nan                       # độ cong dương: đỉnh parabol là điểm THẤP nhất, không phải đỉnh
         rows.append(dict(rid=r.rid, family=r.family, level=r.level, task=r.task, seed=r.seed, k_star=r.k_star, curv=c2, peak_bin=pk,
                          peak_inside=bool(np.isfinite(pk) and 0 < pk < N_RANK_BINS - 1)))
     t = pd.DataFrame(rows).dropna(subset=["curv"]) if rows else pd.DataFrame()
@@ -112,5 +113,35 @@ def test_S3(df):
           f"{frac_u:.0%}; theo họ: {by_fam}")
     return _res("S3", "ủng hộ" if (p_curv < 0.05 and frac_u >= 0.5) else "chưa kết luận", ev, t)
 
+def test_anchor(df):
+    """Chẩn đoán (không phải giả thuyết của paper): eo nông ở họ causal có do thiếu ĐIỂM NEO chung giữa các ngôn ngữ không?
+    Mỗi nhánh so với đối chứng p1p2 (LM, M4, overlap 0%, cùng họ) ghép theo seed; Wilcoxon một phía theo chiều dự đoán:
+      encoder bỏ [MASK] -> eo NÔNG hơn | decoder che 15% đầu vào bằng [MASK] -> SÂU hơn | decoder có điểm neo 5% / 20% -> SÂU hơn."""
+    base = sel(df, grid="p1p2", level="M4", task="LM", overlap=0)
+    arms = [("encoder bỏ [MASK]", "encoder", sel(df, grid="mask_ablation", family="encoder"), -1),
+            ("decoder che 15% đầu vào", "decoder", sel(df, grid="mask_ablation", family="decoder"), 1)]
+    if "anchor" in df.columns:
+        arms += [(f"decoder điểm neo {a:g}", "decoder", sel(df, grid="anchors", anchor=a), 1) for a in (0.05, 0.2)]
+    rows = []
+    for name, fam, s, sign in arms:
+        b, x = sel(base, family=fam).set_index("seed"), s.set_index("seed")
+        sd = sorted(set(b.index) & set(x.index))
+        if not sd:
+            continue
+        dS = (x.loc[sd, "S_edge"] - b.loc[sd, "S_edge"]).values
+        rows.append(dict(arm=name, family=fam, n_seed=len(sd), expected="sâu hơn" if sign > 0 else "nông hơn",
+                         S_edge_base=float(b.loc[sd, "S_edge"].median()), S_edge_arm=float(x.loc[sd, "S_edge"].median()),
+                         G_peak_base=float(b.loc[sd, "G_at_kstar"].median()), G_peak_arm=float(x.loc[sd, "G_at_kstar"].median()),
+                         waist_base=float(b.loc[sd, "has_waist"].mean()), waist_arm=float(x.loc[sd, "has_waist"].mean()),
+                         p=wilcoxon_p(sign * dS)))
+    t = pd.DataFrame(rows)
+    if t.empty:
+        return _res("D_anchor", NO_DATA, "")
+    ev = "; ".join(f"{r.arm}: S_edge {r.S_edge_base:.3f} -> {r.S_edge_arm:.3f} (dự đoán {r.expected}, p={r.p:.3g}), "
+                   f"có eo {r.waist_base:.0%} -> {r.waist_arm:.0%}" for r in t.itertuples())
+    ok = t.p < 0.05
+    verdict = "ủng hộ" if (len(t) == 4 and ok.all()) else ("không ủng hộ" if not ok.any() else "chưa kết luận")
+    return _res("D_anchor", verdict, ev, t)
+
 def run_all_tests(df):
-    return [f(df) for f in (test_P1, test_P2, test_S3)]
+    return [f(df) for f in (test_P1, test_P2, test_S3, test_anchor)]

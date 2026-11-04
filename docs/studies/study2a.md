@@ -13,7 +13,8 @@ Study 2a chỉ kiểm **ba** giả thuyết trên ngôn ngữ tổng hợp, khô
 |---|---|---|---|---|
 | **P1** | chính | Cả 4 họ đều có waist? | `p1p2`, `moe_diff` (overlap 0 %, M4, LM+SEM) | mỗi họ: ≥ 80 % run có waist và edge depth vượt `init` (Wilcoxon p < 0,05); bảng tách thêm LM / SEM |
 | **P2** | chính | Waist đi theo tác vụ (LM / SEM / SURF)? | `p1p2` (decoder, encoder × M0/M2/M4) | như v2 (Jonckheere–Terpstra, Wilcoxon SEM > SURF, TOST "eo cố định"), Holm trong từng mức |
-| **S3** | bổ trợ | Căn chỉnh tại waist theo tần suất khái niệm là chữ U ngược? | tập dò S3 của mọi run overlap 0 % | **nới**: độ cong trung bình theo seed < 0 (Wilcoxon p < 0,05) và ≥ 50 % run cong xuống với đỉnh nằm trong khoảng hạng; không kiểm đỉnh dịch theo capacity |
+| **S3** | bổ trợ | Căn chỉnh tại waist theo tần suất khái niệm là chữ U ngược? | tập dò S3 của các run `p1p2`, `moe_diff` (overlap 0 %) | **nới**: độ cong trung bình theo seed < 0 (Wilcoxon p < 0,05) và ≥ 50 % run cong xuống với đỉnh nằm trong khoảng hạng; không kiểm đỉnh dịch theo capacity. G theo bin dùng **đường cơ sở xáo trong từng bin** (khoá `G_rank_w`) |
+| D_anchor | chẩn đoán | Eo nông ở decoder / MoE có do thiếu **điểm neo** chung giữa các ngôn ngữ? | `mask_ablation`, `anchors`, so với `p1p2` (LM, M4) cùng seed | xem mục *Chẩn đoán điểm neo*; không phải giả thuyết của paper, P1/P2/S3 không dùng các lưới này |
 
 Đã bỏ khỏi 2a: P3 (sinh đôi đơn ngữ), P4, S2, S4 (logit-lens), S5, S6 (mức che diffusion), cánh `balanced`, cùng các lưới
 `balanced`, `p3s2`, `s4`, `s5`, `heldout_p4`. Các cell tương ứng vẫn còn trong notebook gốc nhưng đã được sửa / bỏ cho
@@ -24,15 +25,35 @@ khớp với mã (`logit_lens` là cell 24 trong `DROPPED_CELLS`).
 trộn các tiền tố khác nhau khi trật tự từ khác nhau — SVO / SOV / VSO ở M2, M4 — nên thiên lệch có lợi cho họ hai chiều.)
 Tập dò S3 vẫn dùng vector của từ danh từ chủ ngữ cho mọi họ.
 
+## Chẩn đoán điểm neo (`mask_ablation`, `anchors`)
+
+Ở v3, mọi run decoder / MoE đều có hình eo (đỉnh G nằm giữa mạng, vượt `init`) nhưng **nông** (S_edge ≈ 0,02 ở LM,
+≈ 0,06 ở SEM) so với encoder / diffusion (0,12–0,20), nên trượt ngưỡng 0,05. Giả thuyết: eo cần **điểm neo** — token mà
+mọi ngôn ngữ cùng đi qua. Ngôn ngữ tổng hợp overlap 0 % gần như không có (chỉ BOS / EOS); encoder / diffusion có `[MASK]`
+chung ở đầu vào; nhãn SEM chung làm eo decoder sâu gấp ~3 lần; văn bản thật có rất nhiều (số, tên riêng, từ mượn, ...).
+
+| Nhánh | Thay đổi (chỉ một yếu tố) | Dự đoán nếu giả thuyết đúng |
+|---|---|---|
+| `mask_ablation`, encoder, `mlm_corrupt=shuffle` | 80 % token bị chọn thay bằng token nội dung ngẫu nhiên **của chính câu đó** thay cho `[MASK]` | eo **nông** hơn |
+| `mask_ablation`, decoder, `in_mask=0.15` | 15 % token nội dung **đầu vào** thay bằng `[MASK]`; mục tiêu (token kế tiếp) giữ nguyên | eo **sâu** hơn |
+| `anchors`, decoder, `anchor=0.05 / 0.2` | 5 % / 20 % danh từ (trải đều theo hạng) có gốc từ **giống hệt ở mọi ngôn ngữ**, viết bằng bảng chữ chung 3 phụ âm × 3 nguyên âm — như tên riêng / số; phụ tố vẫn theo từng ngôn ngữ | eo **sâu** hơn, tăng theo tỉ lệ |
+
+Tất cả: LM, M4, overlap 0 %, d = 192, 6 seed (24 run); đối chứng là run LM, M4 cùng họ, cùng seed trong `p1p2` (cùng thế giới
+trừ các danh từ neo). `test_anchor` so S_edge từng nhánh với đối chứng (Wilcoxon một phía ghép theo seed); kết quả ở dòng
+`D_anchor` của báo cáo và `table_D_anchor.csv`. Bộ sinh có điểm neo vẫn qua cổng G0 (round-trip đơn ánh, không ngôn ngữ
+khác phân tích được câu: câu nào cũng có động từ riêng của ngôn ngữ đó). `anchor = 0` cho đúng thế giới cũ.
+
 ## Chạy theo từng họ mô hình
 
 Mỗi họ có một experiment riêng; chạy mỗi họ trong một tiến trình / GPU. Cả bốn ghi chung
-`outputs/study2a_pool1600000/` (worlds/, runs/), nên chỉ phân tích **một lần** sau khi cả bốn xong.
+`outputs/study2a_pool1600000/` (worlds/, runs/), nên chỉ phân tích **một lần** sau khi cả bốn xong. Ngân sách theo họ đặt
+ở `SEQ_MULT_FAMILY` trong `configs/experiment/study2a.yaml`, nên chạy gộp (`make study2a-all`, experiment `study2a_grids`)
+cũng dùng đúng ngân sách đó.
 
-| Họ | Experiment | Lưới | Ngân sách (`SEQ_MULT`, epoch trên pool 1,6M) | Lệnh |
+| Họ | Experiment | Lưới | Ngân sách (`SEQ_MULT_FAMILY`, epoch trên pool 1,6M) | Lệnh |
 |---|---|---|---|---|
-| decoder | `study2a_decoder` | gate_g2 (3) + p1p2 (54) = 57 run | ×2 = 6 000 bước ≈ 3,8 epoch | `make study2a-decoder` |
-| encoder | `study2a_encoder` | p1p2 (54 run) | ×4 = 12 000 bước ≈ 7,7 epoch | `make study2a-encoder` |
+| decoder | `study2a_decoder` | gate_g2 (3) + p1p2 (54) + mask_ablation (6) + anchors (12) = 75 run | ×2 = 6 000 bước ≈ 3,8 epoch | `make study2a-decoder` |
+| encoder | `study2a_encoder` | p1p2 (54) + mask_ablation (6) = 60 run | ×4 = 12 000 bước ≈ 7,7 epoch | `make study2a-encoder` |
 | MoE | `study2a_moe` | moe_diff (18 run) | ×3 = 9 000 bước ≈ 5,8 epoch | `make study2a-moe` |
 | diffusion | `study2a_diffusion` | moe_diff (18 run) | ×5 = 15 000 bước ≈ 9,6 epoch | `make study2a-diffusion` |
 
@@ -47,8 +68,8 @@ CUDA_VISIBLE_DEVICES=3 uv run python scripts/train.py study2a_diffusion status
 make study2a-report        # = uv run python scripts/make_figures.py study2a
 ```
 
-**Cân tải.** Tính theo tổng số bước huấn luyện, encoder nặng nhất (54 × 12 000 ≈ 650 nghìn bước), gần gấp đôi decoder
-(57 × 6 000 ≈ 340 nghìn) và gấp ~4 MoE hoặc diffusion. Bố trí cân hơn: chia encoder làm 2 shard bằng `SHARD=k/n`
+**Cân tải.** Tính theo tổng số bước huấn luyện, encoder nặng nhất (60 × 12 000 ≈ 720 nghìn bước), decoder ≈ 450 nghìn
+(75 × 6 000), MoE + diffusion ≈ 430 nghìn (18 × 9 000 + 18 × 15 000). Bố trí cân hơn: chia encoder làm 2 shard bằng `SHARD=k/n`
 (mỗi shard nhận run thứ k, k+n, ... của mỗi lưới; các shard không trùng nhau) và chạy MoE rồi diffusion nối tiếp:
 
 ```bash
@@ -62,7 +83,7 @@ Theo dõi tiến độ của một họ: `uv run python scripts/train.py study2a
 
 **Thay đổi so với v2** (vì sao phải chạy lại từ đầu):
 1. **Ngân sách theo họ.** v2 dùng chung ×2 cho mọi họ (chốt bằng `pilot_conv` chỉ trên decoder): encoder 0/54 và
-   diffusion 1/18 run hội tụ. v3 đặt `SEQ_MULT` riêng trong từng file `configs/experiment/study2a_<họ>.yaml`
+   diffusion 1/18 run hội tụ. v3 đặt `SEQ_MULT` riêng cho từng họ (`SEQ_MULT_FAMILY` trong `configs/experiment/study2a.yaml`)
    (mọi họ vẫn chạy trọn lịch lr cosine, không early stopping). Các giá trị cho encoder / MoE / diffusion là ước lượng
    (chưa có pilot riêng): sau khi chạy, kiểm lại cột `converged` / `conv_drop`.
 2. **Token cuối cho họ causal** (xem trên). `METRIC_VERSION = 3`.
@@ -78,6 +99,11 @@ không được đọc (khác `train_version`). Repo không lưu checkpoint mô 
 (cùng cấu hình ⇒ cùng nội dung), được dùng lại; muốn dựng lại hẳn thì xoá `outputs/study2a_pool1600000/worlds/` trước
 khi chạy. `results/study2a/` và `paper/figures/study2a/` bị ghi đè khi chạy `make study2a-report` (file cũ của các giả
 thuyết đã bỏ, vd. `table_P3.csv`, không tự xoá).
+
+**Thêm chẩn đoán điểm neo vào đợt v3 đã chạy.** Thêm lưới / khoá mới không đổi `run_id` hay phiên bản của run cũ: chạy lại
+các lệnh theo họ ở trên thì run đã xong được bỏ qua, chỉ 24 run chẩn đoán được huấn luyện (decoder 18, encoder 6).
+Riêng **S3** cần khoá `G_rank_w` (đường cơ sở trong bin) mà run cũ không có, nên S3 báo *chưa có dữ liệu* cho tới khi
+`p1p2` / `moe_diff` được chạy lại (`-o FORCE_RERUN=true`, tức huấn luyện lại 144 run vì không có checkpoint).
 
 ---
 

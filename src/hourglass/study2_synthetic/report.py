@@ -40,7 +40,8 @@ def build_report(df, results):
         w(f"- `figures/{f_}`")
     w("\n## Lưu ý đọc kết quả\n- Waist của từng run theo tiêu chí Study 1 (đỉnh G trong thân, CI dưới của edge depth > 0.05, CKA khớp, vượt `init`).\n"
       "- Hình hourglass lý tưởng của Corollary 1 (quay lại H(Λ) ở tầng cuối) hiếm khi đạt: so G_K với G_0 trong bảng đặc trưng.\n"
-      "- Biểu diễn câu: họ causal (decoder, MoE) lấy ở token nội dung cuối; họ hai chiều (encoder, diffusion) trung bình theo từ.\n")
+      "- Biểu diễn câu: họ causal (decoder, MoE) lấy ở token nội dung cuối; họ hai chiều (encoder, diffusion) trung bình theo từ.\n"
+      "- D_anchor là chẩn đoán (lưới mask_ablation, anchors), không phải giả thuyết của paper; P1/P2/S3 không dùng các lưới này.\n")
     txt = "\n".join(L_)
     with open(f"{ANALYSIS_DIR}/report_study2a.md", "w", encoding="utf-8") as f:
         f.write(txt)

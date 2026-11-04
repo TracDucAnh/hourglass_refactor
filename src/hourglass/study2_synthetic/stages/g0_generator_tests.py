@@ -163,6 +163,16 @@ def _fp(seed):
 check("tất định: cùng seed cho đúng cùng ngôn ngữ và câu", _fp(1) == _fp(1))
 check("khác seed cho thế giới khác", _fp(1) != _fp(2))
 
+# điểm neo (anchor > 0): danh từ neo giống hệt ở mọi ngôn ngữ, các từ khác giữ nguyên, (G) vẫn đúng
+_spa, _spn = make_languages(4, "M4", 0, [1.0] * 4, seed=13, anchor=0.2), make_languages(4, "M4", 0, [1.0] * 4, seed=13)
+_anc = {c for c in POOLS["N"] if len({s.lex[c] for s in _spa}) == 1}
+check("điểm neo: 20% danh từ có gốc từ giống hệt ở mọi ngôn ngữ", len(_anc) == round(0.2 * N_NOUN), f"{len(_anc)}/{N_NOUN}")
+check("điểm neo: mọi từ không phải neo giữ nguyên như anchor = 0",
+      all(a.lex[c] == b.lex[c] for a, b in zip(_spa, _spn) for c in range(N_CONCEPT) if c not in _anc))
+_va = verify_languages(_spa, ContentSampler("t4-anchor"), n=300)
+check("điểm neo: (G2) round-trip == {C} và (G3) không ngôn ngữ khác phân tích được", _va["roundtrip_fail"] == 0 and _va["parsed_by_other"] == 0,
+      f"{_va['roundtrip_fail']} lỗi, {_va['parsed_by_other']} bị ngôn ngữ khác phân tích / {_va['n']}")
+
 # ============================================================
 # Cell T5 — Kiểm thử số đo (G0) và tokenizer
 # ============================================================

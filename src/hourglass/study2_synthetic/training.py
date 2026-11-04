@@ -33,7 +33,10 @@ def _with_label_suffix(ids, n, aux, y, task):
         full[bi, n[bi] + 1] = LABEL0 + y[bi]
     return full, bi
 
-def compute_loss(model, pool, idx, family, task, g, V):
+def compute_loss(model, pool, idx, family, task, g, V, opts=None):
+    """opts (thí nghiệm chẩn đoán điểm neo, lưới mask_ablation): in_mask = tỉ lệ token nội dung ĐẦU VÀO của decoder/MoE bị thay
+    bằng [MASK] chung (mục tiêu giữ nguyên); mlm_corrupt = "shuffle": encoder thay [MASK] bằng token khác của CHÍNH câu đó."""
+    opts = opts or {}
     ids = pool["ids"][idx].long(); n = pool["len"][idx].long()
     B, T = ids.shape
     dev = ids.device
@@ -44,7 +47,10 @@ def compute_loss(model, pool, idx, family, task, g, V):
         y = pool["sem" if task == "SEM" else "surf"][idx]
     if family in ("decoder", "moe"):
         full, bi = _with_label_suffix(ids, n, aux, y, task)
-        logits, _, _ = model(full[:, :-1])
+        inp = full[:, :-1]
+        if opts.get("in_mask", 0.0) > 0:
+            inp = inp.masked_fill((inp >= SYM0) & (torch.rand(inp.shape, device=dev, generator=g) < opts["in_mask"]), MASK)
+        logits, _, _ = model(inp)
         tgt = full[:, 1:]
         ce = F.cross_entropy(logits.float().reshape(-1, V), tgt.reshape(-1), reduction="none").view(B, T - 1)
         j = torch.arange(T - 1, device=dev)[None, :]
@@ -63,7 +69,13 @@ def compute_loss(model, pool, idx, family, task, g, V):
             sel[rows, r.masked_fill(~content, 2.0)[rows].argmin(1)] = True
         u = torch.rand(ids.shape, device=dev, generator=g)
         inp = ids.clone()
-        inp[sel & (u < 0.8)] = MASK
+        m80 = sel & (u < 0.8)
+        if opts.get("mlm_corrupt", "mask") == "shuffle":              # không có token chung: lấy token nội dung ngẫu nhiên cùng câu
+            order = torch.rand(ids.shape, device=dev, generator=g).masked_fill(~content, 2.0).argsort(1)
+            shuf = ids.gather(1, order)                                 # n_content cột đầu = token nội dung của câu, thứ tự ngẫu nhiên
+            inp[m80] = torch.cat([shuf[:, :1], shuf[:, :-1]], 1)[m80]  # vị trí nội dung j (1..n_content) lấy shuf[j - 1]
+        else:
+            inp[m80] = MASK
         m10 = sel & (u >= 0.8) & (u < 0.9)
         inp[m10] = torch.randint(SYM0, V, ids.shape, device=dev, generator=g)[m10]
         logits, _, hn = model(inp)
@@ -102,7 +114,7 @@ def get_val_pool(W, langs=None):
     return _VAL_POOLS[key]
 
 @torch.no_grad()
-def lm_loss_on(model, family, vpool, V, n_max=None, seed=777):
+def lm_loss_on(model, family, vpool, V, n_max=None, seed=777, opts=None):
     """Loss LM (không gồm nhãn phụ) của MỌI họ trên pool cho trước. Mặt nạ (encoder/diffusion) dùng generator cố định
     nên các lần gọi so sánh được với nhau. Với decoder/MoE đây là next-token CE thuần."""
     was = model.training; model.eval()
@@ -112,7 +124,7 @@ def lm_loss_on(model, family, vpool, V, n_max=None, seed=777):
     for s in range(0, N, VAL_BS):
         idx = torch.arange(s, min(N, s + VAL_BS), device=DEVICE)
         with torch.autocast(DEVICE, dtype=torch.bfloat16, enabled=(DEVICE == "cuda")):
-            _, lm = compute_loss(model, vpool, idx, family, "LM", g, V)
+            _, lm = compute_loss(model, vpool, idx, family, "LM", g, V, opts)
         tot += float(lm) * len(idx); cnt += len(idx)
     model.train(was)
     return tot / max(cnt, 1)
@@ -187,7 +199,7 @@ def train_model(model, family, task, W, steps, seed, lang=None, log=True, desc=N
             gr["lr"] = lr
         idx = torch.randint(0, N, (BS,), device=DEVICE, generator=g)
         with torch.autocast(DEVICE, dtype=torch.bfloat16, enabled=(DEVICE == "cuda")):
-            loss, lm = compute_loss(model, pool, idx, family, task, g, V)
+            loss, lm = compute_loss(model, pool, idx, family, task, g, V, hp)
             if family == "moe":
                 loss = loss + MOE_AUX * model.aux_loss()
         opt.zero_grad(set_to_none=True)
@@ -201,7 +213,7 @@ def train_model(model, family, task, W, steps, seed, lang=None, log=True, desc=N
                 bar.set_postfix(lm_loss=f"{ema:.3f}", lr=f"{lr:.1e}", bs=BS, refresh=False)
         if (step + 1) % eval_every == 0 or step == steps - 1:
             rec = dict(step=step + 1, seqs=(step + 1) * BS, lr=float(lr), train_ema=float(ema),
-                       val=lm_loss_on(model, family, vpool, V), trn=lm_loss_on(model, family, pool, V))
+                       val=lm_loss_on(model, family, vpool, V, opts=hp), trn=lm_loss_on(model, family, pool, V, opts=hp))
             hist.append(rec)
             if log:
                 bar.set_postfix(lm_loss=f"{ema:.3f}", val=f"{rec['val']:.3f}", trn=f"{rec['trn']:.3f}", lr=f"{lr:.1e}", bs=BS, refresh=False)

@@ -51,13 +51,13 @@ study2a-gate:   ## Cổng G2 + dự toán GPU-giờ
 study2a-grids:  ## Toàn bộ lưới chính + phân tích
 	scripts/sweep.sh grids $(O)
 
-study2a-all:    ## MAIN RESULTS 2a trọn gói: G2 (chỉ báo cáo) + 144 run lưới chính (p1p2, moe_diff) + thử lại run lỗi + phân tích
+study2a-all:    ## MAIN RESULTS 2a trọn gói: G2 (chỉ báo cáo) + 168 run (p1p2, moe_diff + chẩn đoán điểm neo) + thử lại run lỗi + phân tích
 	scripts/sweep.sh all $(O)
 
-study2a-decoder:   ## Chỉ họ decoder (gate_g2, p1p2); chia GPU: O='-o SHARD=0/2'
+study2a-decoder:   ## Chỉ họ decoder (gate_g2, p1p2, mask_ablation, anchors); chia GPU: O='-o SHARD=0/2'
 	$(PY) scripts/train.py study2a_decoder status $(O)
 
-study2a-encoder:   ## Chỉ họ encoder (p1p2); chia GPU: O='-o SHARD=0/2'
+study2a-encoder:   ## Chỉ họ encoder (p1p2, mask_ablation); chia GPU: O='-o SHARD=0/2'
 	$(PY) scripts/train.py study2a_encoder status $(O)
 
 study2a-moe:       ## Chỉ họ MoE (moe_diff)

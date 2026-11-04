@@ -12,7 +12,7 @@
 #   M4: usable information U_k (probe tuyến tính và MLP, chia nhóm theo nội dung)
 #   S3: G theo bin hạng danh từ (rank_alignment)
 # ============================================================
-METRIC_VERSION = 3   # v3: họ causal (decoder, MoE) đo ở token nội dung cuối. v2: probe U giữ lại tâm từng ngôn ngữ. v1 trừ mất tâm -> U ≈ 0 (lỗi đo).
+METRIC_VERSION = 3   # v3: họ causal (decoder, MoE) đo ở token nội dung cuối; S3 lưu ở khoá G_rank_w (đường cơ sở trong bin). v2: probe U giữ lại tâm từng ngôn ngữ. v1 trừ mất tâm -> U ≈ 0 (lỗi đo).
 
 def _standardize_keep_lang(Z):
     """Z [L,N,d]: chuẩn hóa từng chiều trên (L,N) nhưng KHÔNG trừ trung bình từng ngôn ngữ.
@@ -130,20 +130,27 @@ def compute_metrics(Z, seed=SEED, probes=True, desc="số đo theo tầng", prog
 
 @torch.no_grad()
 def rank_alignment(Zn, ranks):
-    """S3: G theo bin hạng danh từ. Zn [K1,L,Np,d]; G_bin = 1 - mean_bin(d_real) / D_shuffle(toàn tập dò), trung bình qua cặp ngôn ngữ."""
+    """S3: G theo bin hạng danh từ. Zn [K1,L,Np,d]. G_bin = 1 - mean_bin(d_real) / E_pi[d], pi = hoán vị ngẫu nhiên TRONG bin
+    (kỳ vọng chính xác: mean_bin|za|^2 + mean_bin|zc|^2 - 2 mu_a.mu_c), trung bình qua cặp ngôn ngữ. Đường cơ sở trong bin tránh G
+    âm giả do các bin khác nhau về độ dài từ / độ lớn vector (bản cũ chia cho đường cơ sở của toàn tập dò). Bin < 2 mẫu: NaN."""
     K1, L, Np, d = Zn.shape
     pairs = list(itertools.combinations(range(L), 2))
     b = torch.from_numpy(np.clip(np.floor(np.log2(ranks)).astype(np.int64), 0, N_RANK_BINS - 1)).to(DEVICE)
-    cnt = torch.bincount(b, minlength=N_RANK_BINS).float()
+    oh = F.one_hot(b, N_RANK_BINS).float()                      # [Np, B]
+    cnt = oh.sum(0)
     out = np.full((K1, N_RANK_BINS), np.nan, np.float32)
     for k in range(K1):
         Zk = _standardize(Zn[k].to(DEVICE, torch.float32))
-        nrm2 = Zk.square().sum(-1)
+        nrm2 = Zk.square().sum(-1)                              # [L, Np]
         if float(nrm2.mean()) <= 1e-12:
             continue
+        sq = nrm2 @ oh / cnt.clamp_min(1)                         # [L, B]   mean_bin |z|^2
+        mu = torch.einsum("lnd,nb->lbd", Zk, oh) / cnt.clamp_min(1)[None, :, None]
         acc = torch.zeros(N_RANK_BINS, device=DEVICE)
         for a, c in pairs:
-            acc.index_add_(0, b, (Zk[a] - Zk[c]).square().sum(-1) / (nrm2[a].mean() + nrm2[c].mean()))
-        out[k] = (1.0 - acc / len(pairs) / cnt.clamp_min(1)).cpu().numpy()
-        out[k][cnt.cpu().numpy() == 0] = np.nan
+            real = ((Zk[a] - Zk[c]).square().sum(-1) @ oh) / cnt.clamp_min(1)
+            base = sq[a] + sq[c] - 2 * (mu[a] * mu[c]).sum(-1)
+            acc += 1.0 - real / base.clamp_min(1e-12)
+        out[k] = (acc / len(pairs)).cpu().numpy()
+        out[k][cnt.cpu().numpy() < 2] = np.nan
     return out, cnt.cpu().numpy()

@@ -61,8 +61,8 @@ def cv(rid, variant="trained"):
         else:
             o = dict(G=np.nanmean(d["G"], 0), D=np.nanmean(d["D"], 0), CKA=np.nanmean(d["CKA"], 0), A=np.nanmean(d["A"], 0),
                      gc=d["g_content"].astype(np.float32), U=d["U_lin"], Um=d["U_mlp"], Apair=d["A"], Gpair=d["G"])
-            if "G_rank" in d:
-                o["Grank"], o["rank_counts"] = d["G_rank"], d["rank_counts"]
+            if "G_rank_w" in d:                        # S3 bản đường cơ sở trong bin; run cũ (khoá G_rank) không dùng cho S3
+                o["Grank"], o["rank_counts"] = d["G_rank_w"], d["rank_counts"]
             _CV[key] = o
     return _CV[key]
 

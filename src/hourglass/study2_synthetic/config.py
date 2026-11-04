@@ -62,6 +62,7 @@ STEPS_REF  = param("STEPS_REF", _S(12000, 150))
 WARMUP_REF = param("WARMUP_REF", _S(500, 15))
 BATCH        = param("BATCH", _S(1024, 64))       # A100 80GB: logits fp32 là phần tốn nhất (~2,4 GB / 1024 chuỗi)
 SEQ_MULT     = param("SEQ_MULT", _S(2.0, 1.0))       # hệ số nhân tổng số chuỗi so với cấu hình tham chiếu (256 x 12000)
+SEQ_MULT_FAMILY = param("SEQ_MULT_FAMILY", None)   # dict họ -> SEQ_MULT cho run của họ đó (configs/experiment/study2a.yaml); None = mọi họ dùng SEQ_MULT
 LR_BATCH_EXP = param("LR_BATCH_EXP", 0.5)
 TRAIN_VERSION = param("TRAIN_VERSION", 3)                 # run có train_version khác sẽ bị chạy lại / bị loại khỏi phân tích (v1 = 750 bước, chưa hội tụ; v2 = mọi họ cùng ngân sách)
 

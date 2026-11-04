@@ -51,3 +51,46 @@ def test_decoder_overfits_one_batch(ws):
         opt.step()
         losses.append(float(lm))
     assert losses[-1] < 0.5 * losses[0], losses[::10]
+
+
+def _capture(ws, family, V, opts):
+    """Chạy compute_loss với mô hình giả, trả về tensor đầu vào mà mô hình nhận được."""
+    seen = {}
+
+    class Spy(torch.nn.Module):
+        def forward(self, x):
+            seen["inp"] = x.clone()
+            B, T = x.shape
+            return torch.zeros(B, T, V, requires_grad=True), None, torch.zeros(B, T, 4)
+
+    ids = _batch(ws, B=64, V=V).to(ws.DEVICE)
+    n = (ids != ws.PAD).sum(1)
+    pool = dict(ids=ids, len=n, sem=torch.zeros_like(n), surf=torch.zeros_like(n))
+    g = torch.Generator(device=ws.DEVICE).manual_seed(0)
+    ws.compute_loss(Spy(), pool, torch.arange(64, device=ws.DEVICE), family, "LM", g, V, opts)
+    return ids, seen["inp"]
+
+
+def test_decoder_input_mask_only_touches_content(ws):
+    V = ws.SYM0 + 40
+    ids, inp = _capture(ws, "decoder", V, {"in_mask": 0.15})
+    src = ids[:, :-1]
+    masked = inp == ws.MASK
+    assert masked.any() and (src[masked] >= ws.SYM0).all()  # chỉ token nội dung bị che
+    assert torch.equal(inp[~masked], src[~masked])  # phần còn lại giữ nguyên
+    frac = float(masked.sum() / (src >= ws.SYM0).sum())
+    assert 0.10 < frac < 0.20, frac
+    _, clean = _capture(ws, "decoder", V, None)
+    assert not (clean == ws.MASK).any()  # mặc định: không che đầu vào
+
+
+def test_encoder_shuffle_corruption_has_no_mask_and_stays_in_sentence(ws):
+    V = ws.SYM0 + 4000  # nhiều ký hiệu -> mỗi câu có tập token gần như riêng
+    ids, inp = _capture(ws, "encoder", V, {"mlm_corrupt": "shuffle"})
+    assert not (inp == ws.MASK).any()
+    changed = (inp != ids) & (ids >= ws.SYM0)
+    # token thay thế phần lớn lấy từ chính câu đó (10% còn lại là token ngẫu nhiên toàn bộ từ vựng, như MLM chuẩn)
+    same_row = [bool((ids[b] == inp[b, j]).any()) for b, j in changed.nonzero().tolist()]
+    assert changed.any() and sum(same_row) / len(same_row) > 0.8
+    _, std = _capture(ws, "encoder", V, None)
+    assert (std == ws.MASK).any()  # mặc định: MLM chuẩn với [MASK]

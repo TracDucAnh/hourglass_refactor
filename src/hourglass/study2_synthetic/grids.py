@@ -13,16 +13,19 @@ FAMILIES = ["decoder", "encoder", "moe", "diffusion"]
 TASKS = ["LM", "SEM", "SURF"]
 
 def make_cfg(grid, family="decoder", level="M4", task="SEM", d=D_MAIN, L=4, overlap=0, len_scale=1.0,
-             len_scale_X=None, share_X=None, seed=0, bs=None, seq_mult=None, tag=None):
-    """bs / seq_mult / tag: chỉ dùng cho lưới pilot_conv (ghi đè batch và hệ số nhân tổng chuỗi cho riêng run đó)."""
+             len_scale_X=None, share_X=None, seed=0, bs=None, seq_mult=None, tag=None, anchor=0.0, in_mask=0.0, mlm_corrupt="mask"):
+    """bs / seq_mult / tag: chỉ dùng cho lưới pilot_conv (ghi đè batch và hệ số nhân tổng chuỗi cho riêng run đó).
+    anchor / in_mask / mlm_corrupt: chẩn đoán điểm neo (lưới anchors, mask_ablation); giá trị mặc định = như mọi lưới khác."""
     return dict(grid=grid, family=family, level=level, task=task, d=d, L=L, overlap=overlap, len_scale=len_scale,
-                len_scale_X=len_scale_X, share_X=share_X, seed=seed, bs=bs, seq_mult=seq_mult, tag=tag)
+                len_scale_X=len_scale_X, share_X=share_X, seed=seed, bs=bs, seq_mult=seq_mult, tag=tag,
+                anchor=anchor, in_mask=in_mask, mlm_corrupt=mlm_corrupt)
 
 def run_id(c):
     ls = f"{c['len_scale']:g}" + (f"X{c['len_scale_X']:g}" if c["len_scale_X"] else "")
     sh = f"{c['share_X']:.2f}" if c["share_X"] else "eq"
     return (f"{c['grid']}__{c['family']}_{c['level']}_{c['task']}_d{c['d']}_L{c['L']}_ov{c['overlap']}_ls{ls}_sh{sh}_s{c['seed']}"
-            + (f"_{c['tag']}" if c.get("tag") else ""))
+            + (f"_{c['tag']}" if c.get("tag") else "") + (f"_a{c['anchor']:g}" if c.get("anchor") else "")
+            + (f"_im{c['in_mask']:g}" if c.get("in_mask") else "") + (f"_mlm{c['mlm_corrupt']}" if c.get("mlm_corrupt", "mask") != "mask" else ""))
 
 def grid_configs(name):
     if name == "pilot_conv":
@@ -42,7 +45,15 @@ def grid_configs(name):
                 for f in ("decoder", "encoder") for lv in LEVELS for t in TASKS for s in range(6)]
     if name == "moe_diff":
         return [make_cfg("moe_diff", family=f, task=t, seed=s) for f in ("moe", "diffusion") for t in TASKS for s in range(6)]
+    if name == "mask_ablation":
+        # Chẩn đoán: [MASK] chung có phải điểm neo tạo eo? encoder bỏ [MASK] (thay bằng token cùng câu) / decoder che 15% đầu vào
+        # bằng [MASK]. LM, M4, 6 seed; đối chứng = run LM, M4 cùng seed trong p1p2 (test_anchor).
+        return ([make_cfg("mask_ablation", family="encoder", task="LM", seed=s, mlm_corrupt="shuffle") for s in range(6)]
+                + [make_cfg("mask_ablation", family="decoder", task="LM", seed=s, in_mask=0.15) for s in range(6)])
+    if name == "anchors":
+        # Chẩn đoán: điểm neo trong DỮ LIỆU (5% / 20% danh từ viết giống hệt ở mọi ngôn ngữ) cho decoder LM, M4, 6 seed.
+        return [make_cfg("anchors", family="decoder", task="LM", seed=s, anchor=a) for a in (0.05, 0.2) for s in range(6)]
     raise KeyError(name)
 
-ALL_GRIDS = ["pilot_conv", "gate_g2", "smoke", "p1p2", "moe_diff"]
+ALL_GRIDS = ["pilot_conv", "gate_g2", "smoke", "p1p2", "moe_diff", "mask_ablation", "anchors"]
 print({g: len(grid_configs(g)) for g in ALL_GRIDS})

@@ -1,8 +1,7 @@
 # Study 2a — chỉ họ MoE (causal, 8 expert top-2). Một tiến trình / GPU; chạy song song với study2a_{decoder,encoder,diffusion}.
-# Ngân sách: ở v2 (x2) 11/18 run hội tụ -> x3 = 9000 bước x batch 1024 ≈ 5.8 epoch trên pool 1.6M.
+# Ngân sách: ở v2 (x2) 11/18 run hội tụ -> SEQ_MULT_FAMILY.moe = x3 ≈ 5.8 epoch (study2a.yaml).
 defaults:
   - experiment/study2a
 
 FAMILY: moe
-SEQ_MULT: 3.0
 RUN_GRIDS: ["moe_diff"]

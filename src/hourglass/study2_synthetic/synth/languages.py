@@ -46,6 +46,7 @@ AFFIX_ITEMS = [("num", "PL"), ("def", "DEF"), ("case", "ACC"), ("tense", "PAST")
                ("neg", "NEG"), ("agr", "PL"), ("mark", "POSS"), ("mark", "REL")]
 N_AFF = len(AFFIX_ITEMS)
 N_CONS, N_VOW = 8, 5
+N_ANCHOR_CONS, N_ANCHOR_VOW = 3, 3      # bảng chữ CHUNG của điểm neo (9 âm tiết), không thuộc riêng ngôn ngữ nào
 
 def _letter_pool():
     latin = "abcdefghijklmnopqrstuvwxyz"
@@ -86,11 +87,32 @@ def build_lexicon(rng, stem_sylls, len_scale):
         used.add(s); lex[cid] = s
     return lex, {s: c for c, s in enumerate(lex)}
 
+def make_anchors(rng, sylls, frac):
+    """Điểm neo: một phần `frac` danh từ (chọn ngẫu nhiên, trải đều theo hạng) có gốc từ GIỐNG HỆT ở mọi ngôn ngữ, viết bằng
+    bảng chữ chung - như tên riêng / số trong văn bản thật. Phụ tố (số, xác định, cách) vẫn theo từng ngôn ngữ. Độ dài theo T03
+    (len_scale = 1). Trả về {cid: gốc từ}."""
+    picked = sorted(rng.sample(POOLS["N"], int(round(frac * len(POOLS["N"])))), key=lambda c: (CONCEPT_RANK[c], c))
+    out, used = {}, set()
+    for cid in picked:
+        n = max(1, int(0.6 + 0.42 * math.log(CONCEPT_RANK[cid]) + 0.5))
+        while True:
+            for _ in range(24):
+                s = "".join(rng.choice(sylls) for _ in range(n))
+                if s not in used:
+                    break
+            else:
+                n += 1
+                continue
+            break
+        used.add(s); out[cid] = s
+    return out
+
 class LangSpec:
-    def __init__(self, idx, C, V, stem_sylls, aff, typ, lex, len_scale):
+    def __init__(self, idx, C, V, stem_sylls, aff, typ, lex, len_scale, anchor_sylls=()):
         self.idx, self.C, self.V, self.len_scale = idx, list(C), list(V), len_scale
         self.stem_sylls = list(stem_sylls)
-        self.stem_set = set(stem_sylls)
+        self.stem_set = set(stem_sylls) | set(anchor_sylls)      # âm tiết điểm neo cũng là âm tiết gốc (parser nhận ra danh từ neo)
+        self.anchor_letters = sorted({ch for s in anchor_sylls for ch in s})
         self.aff = aff                                           # (feat, val) -> âm tiết
         self.aff_inv = {s: k for k, s in aff.items()}
         self.order, self.head, self.pos = typ["order"], typ["head"], typ["pos"]
@@ -106,7 +128,8 @@ class LangSpec:
                 f"pos={''.join(self.pos[f][0] for f in ALL_FEATS)}, case={int(self.has_case)}, agr={int(self.has_agr)}, "
                 f"len_scale={self.len_scale:g}")
 
-def make_languages(L, level, overlap, len_scales, seed):
+def make_languages(L, level, overlap, len_scales, seed, anchor=0.0):
+    """anchor > 0: thêm điểm neo (make_anchors) dùng chung cho mọi ngôn ngữ; anchor = 0 cho đúng ngôn ngữ như trước."""
     assert overlap in (0, 100) and level in LEVELS and len(len_scales) == L
     pool = _letter_pool()
     random.Random(f"{seed}-letters").shuffle(pool)
@@ -116,6 +139,12 @@ def make_languages(L, level, overlap, len_scales, seed):
         syl = [c + v for c in C for v in V]
         rng.shuffle(syl)
         return syl[:N_AFF], syl[N_AFF:]                          # T02: 9 phụ tố + 31 gốc
+    anchors, a_syl = {}, []
+    if anchor > 0:                                               # chữ cái của điểm neo: ngay sau phần chữ các ngôn ngữ đã dùng
+        k0 = n_let if overlap == 100 else L * n_let
+        assert k0 + N_ANCHOR_CONS + N_ANCHOR_VOW <= len(pool), "không đủ chữ cái cho điểm neo"
+        a_syl = [c + v for c in pool[k0: k0 + N_ANCHOR_CONS] for v in pool[k0 + N_ANCHOR_CONS: k0 + N_ANCHOR_CONS + N_ANCHOR_VOW]]
+        anchors = make_anchors(random.Random(f"{seed}-anchor"), a_syl, anchor)
     shared = None
     if overlap == 100:                                           # T04: cùng bảng chữ, cùng phân lớp cho mọi ngôn ngữ
         C, V = pool[:N_CONS], pool[N_CONS:n_let]
@@ -133,7 +162,9 @@ def make_languages(L, level, overlap, len_scales, seed):
         aff = {item: sh[j] for j, item in enumerate(AFFIX_ITEMS)}
         typ = sample_typology(random.Random(f"{seed}-typ{i}"), level)
         lex, _ = build_lexicon(random.Random(f"{seed}-lex{i}"), stem_sylls, len_scales[i])
-        specs.append(LangSpec(i, C, V, stem_sylls, aff, typ, lex, len_scales[i]))
+        for cid, st in anchors.items():                            # ghi đè SAU khi dựng: mọi từ không phải neo giữ nguyên
+            lex[cid] = st
+        specs.append(LangSpec(i, C, V, stem_sylls, aff, typ, lex, len_scales[i], a_syl))
     return specs
 
 # ---------------- Renderer g_l ----------------
