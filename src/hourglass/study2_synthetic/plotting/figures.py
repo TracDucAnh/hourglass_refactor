@@ -25,7 +25,6 @@ def fig_P1(df):
         s = sel(base, task="SEM")
         for i, k in enumerate(("D", "G", "U")):
             draw(axes[i, j], s, k, C["init"], "--", variant="init", norm_L=(k == "U"))
-        axes[0, j].set_ylim(0, 2.2); axes[1, j].set_ylim(-0.05, 1.0); axes[2, j].set_ylim(-0.05, 1.05)
         for i in range(3):
             axes[i, j].set_xlim(0, 1)
             if i < 2: axes[i, j].set_xticklabels([])
@@ -42,7 +41,7 @@ def fig_P2(df):
     for j, fam in enumerate(fams):
         for t in TASKS:
             draw(axes[j], sel(df, family=fam, level="M4", overlap=0, grid="p1p2", task=t), "G", C[t], mark_peak=True)
-        axes[j].set_ylim(-0.05, 1.0); _xlab(axes[j]); subcap(axes[j], f"({'ab'[j]}) {fam}, level M4"); axes[j].set_ylabel(r"alignment $\bar G_k$")
+        _xlab(axes[j]); subcap(axes[j], f"({'ab'[j]}) {fam}, level M4"); axes[j].set_ylabel(r"alignment $\bar G_k$")
     ax = axes[-1]
     for fi, fam in enumerate(fams):
         for ti, t in enumerate(TASKS):
