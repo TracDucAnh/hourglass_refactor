@@ -10,69 +10,128 @@
 # Cell D3 — Kiểm định giả thuyết P1, P2 (chính) và S3 (bổ trợ) — phạm vi Study 2a
 # Mỗi hàm trả về dict(hyp, verdict, evidence, table). verdict ∈ {ủng hộ, không ủng hộ, chưa kết luận, chưa có dữ liệu}.
 # ============================================================
+def _mci(x):
+    """Trung bình và CI95 (t) qua các phần tử của x (ở đây: seed)."""
+    x = np.asarray(x, float); x = x[np.isfinite(x)]
+    if len(x) == 0:
+        return np.nan, np.nan, np.nan
+    m = float(x.mean())
+    if len(x) < 2:
+        return m, np.nan, np.nan
+    h = float(stats.t.ppf(0.975, len(x) - 1) * x.std(ddof=1) / math.sqrt(len(x)))
+    return m, m - h, m + h
+
+def _waist_label(waist, s_lo):
+    """Nhãn MÔ TẢ như Bảng 9 của paper (Study 1), theo cận dưới CI95 của S_edge: rõ >= 0.20 | vừa 0.10-0.20 | nông 0.05-0.10 |
+    sát ngưỡng < 0.05. Chỉ để đọc; kết luận theo `waist` (CI của dS > 0, đỉnh trong thân)."""
+    if not waist:
+        return "không có eo"
+    return "rõ" if s_lo >= 0.20 else "vừa" if s_lo >= 0.10 else "nông" if s_lo >= 0.05 else "sát ngưỡng"
+
 def test_P1(df):
-    """P1: cả bốn họ có waist (G_k, D_k dip so với mô hình chưa huấn luyện) trên ngôn ngữ tổng hợp (overlap 0%, M4, LM+SEM).
-    Bảng có thêm từng tác vụ riêng để thấy tác vụ nào thiếu waist."""
+    """P1: cả bốn họ có waist trên ngôn ngữ tổng hợp - bằng ƯỚC LƯỢNG, không bỏ phiếu theo run. Đơn vị là seed (trung bình các run
+    của seed đó); mỗi (họ, mức, tác vụ) báo, kèm CI95 (t) qua seed:
+      dS  = S_edge(trained) - S_edge(init)   eo sâu hơn mô hình chưa huấn luyện bao nhiêu (thêm Wilcoxon một phía)
+      rel = S_edge / G_k*                    độ sâu tương đối, không phụ thuộc thang G của từng họ
+      rho = k*/K                             vị trí đỉnh
+    Có eo <=> CI95 của dS nằm trên 0 và CI95 của rho nằm trong (0, 1). Kết luận chính: M4, LM+SEM (thiết kế P1); các mức,
+    tác vụ khác là mô tả. label: nhãn mô tả theo cận dưới CI95 (qua seed) của S_edge, cùng mốc với Bảng 9 của paper
+    (ở Study 1 là CI bootstrap theo nội dung của một mô hình). frac_runs_study1 = tỉ lệ run qua tiêu chí từng run của Study 1 (có ngưỡng tuyệt đối 0.05), chỉ đối chiếu.
+    gate_g2 không dùng: cùng cấu hình với p1p2 decoder M4/SEM seed 0-2 (tránh đếm lặp)."""
+    d0 = sel(df, overlap=0, grid=["p1p2", "moe_diff", "smoke"])
     rows = []
-    d0 = sel(df, overlap=0, level="M4", task=["LM", "SEM"], grid=["gate_g2", "p1p2", "moe_diff", "smoke"])    # không gồm lưới chẩn đoán
     for fam in FAMILIES:
-        s = sel(d0, family=fam)
-        for task, x in [("LM+SEM", s), ("LM", sel(s, task="LM")), ("SEM", sel(s, task="SEM"))]:
-            if len(x):
-                rows.append(dict(group=fam, task=task, n=len(x), n_waist=int(x.has_waist.sum()), frac=float(x.has_waist.mean()),
-                                 median_S_edge=float(x.S_edge.median()), median_S_edge_init_hi=float(x.S_edge_init_hi.median()),
-                                 p_vs_init=wilcoxon_p((x.S_edge - x.S_edge_init_hi).values),
-                                 frac_Ushape=float(((x.slope_left > 0) & (x.slope_right < 0)).mean()), median_rho=float(x.rho_star.median())))
+        for lv in LEVELS:
+            for task in ("LM+SEM", "LM", "SEM", "SURF"):
+                x = sel(d0, family=fam, level=lv, task=["LM", "SEM"] if task == "LM+SEM" else task)
+                if x.empty:
+                    continue
+                g = x.assign(dS=x.S_edge - x.S_edge_init, rel=x.S_edge / x.G_at_kstar).groupby("seed")[["S_edge", "dS", "rel", "rho_star"]].mean()
+                S, dS, rel, rho = _mci(g.S_edge), _mci(g.dS), _mci(g.rel), _mci(g.rho_star)
+                has = bool(dS[1] > 0 and rho[1] > 0 and rho[2] < 1)
+                rows.append(dict(family=fam, level=lv, task=task, primary=bool(lv == "M4" and task == "LM+SEM"), n_seed=len(g), n_run=len(x),
+                                 dS=dS[0], dS_lo=dS[1], dS_hi=dS[2], p_dS=wilcoxon_p(g.dS.values),
+                                 rel=rel[0], rel_lo=rel[1], rel_hi=rel[2], rho=rho[0], rho_lo=rho[1], rho_hi=rho[2],
+                                 G_peak=float(x.G_at_kstar.mean()), frac_interior=float(x.interior.mean()),
+                                 S=S[0], S_lo=S[1], S_hi=S[2], frac_runs_study1=float(x.has_waist.mean()), waist=has,
+                                 label=_waist_label(has, S[1])))
     t = pd.DataFrame(rows)
     if t.empty:
         return _res("P1", NO_DATA, "")
-    ok_fam = {r.group: bool(r.frac >= 0.8 and r.p_vs_init < 0.05) for r in t[t.task == "LM+SEM"].itertuples()}
-    by_task = {f"{r.group}/{r.task}": round(r.frac, 2) for r in t[t.task != "LM+SEM"].itertuples()}
-    miss = [f for f in FAMILIES if f not in ok_fam]
-    ev = f"họ có waist: {ok_fam}; tỉ lệ run có waist theo tác vụ: {by_task}" + (f"; thiếu dữ liệu: {miss}" if miss else "")
+    m = t[t.primary].set_index("family")
+    ev = "; ".join(f"{f}: {r.label}, S_edge={r.S:.3f} [{r.S_lo:.3f}, {r.S_hi:.3f}], ΔS={r.dS:.3f} [{r.dS_lo:.3f}, {r.dS_hi:.3f}] (p={r.p_dS:.3g}), S/G*={r.rel:.2f} [{r.rel_lo:.2f}, {r.rel_hi:.2f}], "
+                   f"ρ*={r.rho:.2f} [{r.rho_lo:.2f}, {r.rho_hi:.2f}]" for f, r in m.iterrows())
+    other = t[(t.task == "LM+SEM") & (t.level != "M4")]
+    if len(other):
+        ev += " | mức khác (mô tả): " + ", ".join(f"{r.family} {r.level} {r.label}, ΔS={r.dS:.3f} [{r.dS_lo:.3f}, {r.dS_hi:.3f}]" for r in other.itertuples())
+    miss = [f for f in FAMILIES if f not in m.index]
     if miss:
-        return _res("P1", "chưa kết luận", ev, t)
-    return _res("P1", "ủng hộ" if all(ok_fam.values()) else "không ủng hộ", ev, t)
+        return _res("P1", "chưa kết luận", ev + f"; thiếu dữ liệu: {miss}", t)
+    verdict = "ủng hộ" if m.waist.all() else ("không ủng hộ" if (m.dS_hi <= 0).any() else "chưa kết luận")
+    return _res("P1", verdict, ev, t)
+
+P2_CONTRASTS = (("SEM", "LM"), ("SEM", "SURF"), ("SURF", "LM"))
+P2_METRICS = ("S_edge", "G_at_kstar", "rho_star", "w")      # độ sâu, đỉnh G, vị trí, độ rộng
 
 def test_P2(df):
-    """P2: vị trí/độ rộng/độ sâu waist đi theo tác vụ: rộng nhất ở SEM, hẹp hoặc dịch ở SURF; kỳ vọng bị bác nếu eo cố định bất kể tác vụ."""
+    """P2: waist đi theo tác vụ - bằng ƯỚC LƯỢNG như P1. Với mỗi (họ, mức) và mỗi cặp tác vụ (SEM-LM, SEM-SURF, SURF-LM): hiệu số
+    ghép theo seed của độ sâu S_edge, đỉnh G_k*, vị trí rho* và độ rộng w; báo trung bình từng tác vụ, hiệu số với CI95 (t) qua
+    seed, và Wilcoxon hai phía (mô tả mức nhất quán về dấu qua seed; kết luận theo CI).
+      độ sâu đổi theo tác vụ <=> CI95 của hiệu S_edge ở ít nhất một cặp không chứa 0
+      vị trí dịch             <=> CI95 của hiệu rho* không chứa 0 và |hiệu| > RHO_MARGIN (rho* đã chuẩn hóa theo độ sâu mạng)
+      vị trí cố định          <=> CI95 của hiệu rho* ở mọi cặp nằm trong [-RHO_MARGIN, RHO_MARGIN]
+      eo cố định              <=> vị trí cố định và độ sâu không đổi
+    Kết luận chính: M4 (cả bốn họ); M0 / M2 (decoder, encoder) là mô tả. Đỉnh G và độ rộng chỉ mô tả (độ rộng không xác định
+    khi eo nông). gate_g2 không dùng (trùng cấu hình p1p2)."""
+    d0 = sel(df, overlap=0, grid=["p1p2", "moe_diff", "smoke"])
     rows = []
-    for fam in ("decoder", "encoder"):
+    for fam in FAMILIES:
         for lv in LEVELS:
-            s = sel(df, family=fam, level=lv, overlap=0, grid="p1p2")
-            if s.empty:
+            x = sel(d0, family=fam, level=lv)
+            if x.empty:
                 continue
-            piv = {m: s.pivot_table(index="seed", columns="task", values=m) for m in ("w", "S_edge", "rho_star")}
-            if not all(t in piv["w"].columns for t in TASKS):
-                continue
-            g = [piv["w"][t].dropna().values for t in ("SURF", "LM", "SEM")]
-            J, z, pj = jonckheere_terpstra(g)
-            dS = (piv["S_edge"]["SEM"] - piv["S_edge"]["SURF"]).values
-            dw = (piv["w"]["SEM"] - piv["w"]["SURF"]).values
-            dr = (piv["rho_star"]["SEM"] - piv["rho_star"]["SURF"]).values
-            rows.append(dict(family=fam, level=lv, n_seed=len(dS), JT_p_width=pj, p_depth_SEM_gt_SURF=wilcoxon_p(dS), p_width_SEM_gt_SURF=wilcoxon_p(dw),
-                             p_rho_shift=wilcoxon_p(dr, alt="two-sided"), mean_drho=float(np.nanmean(dr)),
-                             tost_rho_fixed=tost_p(dr, RHO_MARGIN), tost_depth_equal=tost_p(dS, 0.05),
-                             mean_w={t: round(float(piv["w"][t].mean()), 3) for t in TASKS}))
+            for m in P2_METRICS:
+                piv = x.pivot_table(index="seed", columns="task", values=m)
+                part = []
+                for a, b in P2_CONTRASTS:
+                    if a not in piv.columns or b not in piv.columns:
+                        continue
+                    d = (piv[a] - piv[b]).dropna().values
+                    mu, lo, hi = _mci(d)
+                    part.append(dict(family=fam, level=lv, metric=m, contrast=f"{a}-{b}", n_seed=len(d), mean_a=float(piv[a].mean()),
+                                     mean_b=float(piv[b].mean()), diff=mu, lo=lo, hi=hi, p=wilcoxon_p(d, alt="two-sided")))
+                rows += part
     t = pd.DataFrame(rows)
     if t.empty:
         return _res("P2", NO_DATA, "")
-    # Holm TRONG từng mức (M4 là mức chính: 2 họ -> với 6 seed p_min = 0.0156 x 2 = 0.031 < 0.05 vẫn đạt được);
-    # M0/M2 được báo cáo để so sánh (thăm dò).
-    for c in ("JT_p_width", "p_depth_SEM_gt_SURF", "p_width_SEM_gt_SURF", "p_rho_shift"):
-        t[c + "_holm"] = np.nan
-        for lv in t.level.unique():
-            ix = t.level == lv
-            t.loc[ix, c + "_holm"] = holm(t.loc[ix, c].fillna(1.0).values)
-    t["task_matters"] = (t.JT_p_width_holm < 0.05) | (t.p_depth_SEM_gt_SURF_holm < 0.05) | ((t.p_rho_shift_holm < 0.05) & (t.mean_drho.abs() > RHO_MARGIN))
-    t["waist_fixed"] = (t.tost_rho_fixed < 0.05) & (t.tost_depth_equal < 0.05)
-    m4 = t[t.level == "M4"]
-    ev = f"M4: nhạy với tác vụ {m4.set_index('family').task_matters.to_dict()}; eo cố định (TOST) {m4.set_index('family').waist_fixed.to_dict()}"
-    if m4.empty:
+    t["excl0"] = (t.lo > 0) | (t.hi < 0)
+    summ = {}
+    for (fam, lv), g in t.groupby(["family", "level"], sort=False):
+        dep, pos = g[g.metric == "S_edge"], g[g.metric == "rho_star"]
+        depth = bool(dep.excl0.any())
+        shift = bool((pos.excl0 & (pos["diff"].abs() > RHO_MARGIN)).any())
+        fixed_pos = bool(len(pos) and ((pos.lo >= -RHO_MARGIN) & (pos.hi <= RHO_MARGIN)).all())
+        summ[(fam, lv)] = dict(depth_changes=depth, position_shifts=shift, position_fixed=fixed_pos,
+                               task_matters=depth or shift, waist_fixed=fixed_pos and not depth)
+    for k in ("depth_changes", "position_shifts", "position_fixed", "task_matters", "waist_fixed"):
+        t[k] = [summ[(r.family, r.level)][k] for r in t.itertuples()]
+    fmt = lambda g, m: ", ".join(f"{r.contrast} {r.diff:+.3f} [{r.lo:+.3f}, {r.hi:+.3f}]" for r in g[g.metric == m].itertuples())
+    m4 = {f: s for (f, lv), s in summ.items() if lv == "M4"}
+    parts = []
+    for fam, s in m4.items():
+        g = t[(t.family == fam) & (t.level == "M4")]
+        what = "độ sâu" * s["depth_changes"] + (" + " if s["depth_changes"] and s["position_shifts"] else "") + "vị trí" * s["position_shifts"]
+        tag = f"đổi theo tác vụ ({what})" if s["task_matters"] else ("eo cố định" if s["waist_fixed"] else "chưa rõ")
+        parts.append(f"{fam}: {tag}; độ sâu {fmt(g, 'S_edge')}; vị trí {fmt(g, 'rho_star')}")
+    ev = "M4 - " + "; ".join(parts)
+    other = [f"{f} {lv}: " + ("đổi theo tác vụ" if s["task_matters"] else "không rõ") for (f, lv), s in summ.items() if lv != "M4"]
+    if other:
+        ev += " | mức khác (mô tả): " + ", ".join(other)
+    if not m4:
         return _res("P2", "chưa kết luận", ev, t)
-    if m4.waist_fixed.all():
+    if all(s["waist_fixed"] for s in m4.values()):
         return _res("P2", "không ủng hộ", ev, t)
-    return _res("P2", "ủng hộ" if m4.task_matters.all() else "chưa kết luận", ev, t)
+    return _res("P2", "ủng hộ" if all(s["task_matters"] for s in m4.values()) else "chưa kết luận", ev, t)
 
 def _inverted_u(y, cnt, min_cnt=10):
     """y: G theo bin hạng. Trả về (hệ số bậc 2, đỉnh, độ dốc đầu, độ dốc cuối, SSE tuyến-đơn-điệu-tăng, SSE bậc 2)."""

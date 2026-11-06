@@ -129,6 +129,7 @@ def build_feature_table(save=True):
             continue
         c = cv(r.rid, "trained")
         row = {**r._asdict(), **f}
+        row["S_edge_init"] = fi["S_edge"] if fi else np.nan
         row["S_edge_init_hi"] = fi["S_edge_hi"] if fi else np.nan
         row["above_init"] = bool(f["S_edge_lo"] > fi["S_edge_hi"]) if fi else True
         row["has_waist"] = bool(f["has_waist_curve"] and row["above_init"])
