@@ -25,6 +25,13 @@ khớp với mã (`logit_lens` là cell 24 trong `DROPPED_CELLS`).
 trộn các tiền tố khác nhau khi trật tự từ khác nhau — SVO / SOV / VSO ở M2, M4 — nên thiên lệch có lợi cho họ hai chiều.)
 Tập dò S3 vẫn dùng vector của từ danh từ chủ ngữ cho mọi họ.
 
+Họ causal lưu **thêm** số đo theo trung bình theo từ (`init_mean.npz`, `trained_mean.npz`) để đối chiếu cách đo. Hình P1 có hai bản:
+`fig_P1_four_families_lasttoken.pdf` (decoder / MoE theo token cuối) và `fig_P1_four_families_meanpool.pdf` (decoder / MoE theo
+trung bình theo từ); cột encoder / diffusion giống nhau ở hai bản. Bảng P1 / P2 vẫn dùng cách đo chính (token cuối cho họ causal).
+Run decoder / MoE đã chạy trước thay đổi này không có file `_mean` (không có checkpoint nên phải huấn luyện lại):
+`scripts/train.py study2a_decoder status -o 'RUN_GRIDS=[p1p2]' -o FORCE_RERUN=true` và
+`scripts/train.py study2a_moe status -o FORCE_RERUN=true` (54 + 18 run).
+
 ## Chẩn đoán điểm neo (`mask_ablation`, `anchors`)
 
 Ở v3, mọi run decoder / MoE đều có hình eo (đỉnh G nằm giữa mạng, vượt `init`) nhưng **nông** (S_edge ≈ 0,02 ở LM,

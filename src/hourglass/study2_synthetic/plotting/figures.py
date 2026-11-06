@@ -9,29 +9,36 @@
 # ============================================================
 # Cell D5 — Hình (mỗi hình ứng với một giả thuyết)
 # ============================================================
-def fig_P1(df):
-    df = sel(df, grid=["gate_g2", "p1p2", "moe_diff", "smoke"])                              # không gồm lưới chẩn đoán
+def fig_P1(df, pool="last"):
+    """pool = "last": họ causal (decoder, MoE) đo ở token nội dung cuối (cách đo chính); "mean": họ causal đo theo trung bình
+    theo từ ({variant}_mean.npz). Họ hai chiều (encoder, diffusion) luôn theo trung bình theo từ, giống nhau ở hai hình."""
+    df = sel(df, grid=["p1p2", "moe_diff", "smoke"])          # không gồm lưới chẩn đoán; gate_g2 trùng cấu hình p1p2
     fams = [f for f in FAMILIES if len(sel(df, family=f, level="M4", overlap=0, task=["LM", "SEM"]))]
     if not fams:
         return print("[P1] chưa có dữ liệu")
     fig, axes = plt.subplots(3, len(fams), figsize=(2.6 * len(fams) + 0.4, 6.4), squeeze=False)
     for j, fam in enumerate(fams):
         base = sel(df, family=fam, level="M4", overlap=0)
+        mean_pool = pool == "mean" or fam not in ("decoder", "moe")
+        tr, ini = ("trained_mean", "init_mean") if (pool == "mean" and fam in ("decoder", "moe")) else ("trained", "init")
         for t, ls in (("LM", "-"), ("SEM", "-")):
             s = sel(base, task=t)
-            draw(axes[0, j], s, "D", C[t], ls, mark_min=True)
-            draw(axes[1, j], s, "G", C[t], ls, mark_peak=True)
-            draw(axes[2, j], s, "U", C[t], ls, norm_L=True)
+            draw(axes[0, j], s, "D", C[t], ls, variant=tr, mark_min=True)
+            draw(axes[1, j], s, "G", C[t], ls, variant=tr, mark_peak=True)
+            draw(axes[2, j], s, "U", C[t], ls, variant=tr, norm_L=True)
         s = sel(base, task="SEM")
         for i, k in enumerate(("D", "G", "U")):
-            draw(axes[i, j], s, k, C["init"], "--", variant="init", norm_L=(k == "U"))
+            draw(axes[i, j], s, k, C["init"], "--", variant=ini, norm_L=(k == "U"))
         for i in range(3):
             axes[i, j].set_xlim(0, 1)
             if i < 2: axes[i, j].set_xticklabels([])
-        _xlab(axes[2, j]); subcap(axes[2, j], f"({'abcd'[j]}) {fam}")
+        _xlab(axes[2, j]); subcap(axes[2, j], f"({'abcd'[j]}) {fam}, {'word mean' if mean_pool else 'last token'}")
     axes[0, 0].set_ylabel(r"separation $D_k$"); axes[1, 0].set_ylabel(r"alignment $\bar G_k$"); axes[2, 0].set_ylabel(r"$U_k/\log|\mathcal{L}|$")
     legend_top(fig, _lines([(C["LM"], "-", "LM"), (C["SEM"], "-", "SEM"), (C["init"], "--", "untrained (init)")]))
-    fig.tight_layout(); save_fig(fig, "fig_P1_four_families")
+    fig.tight_layout(); save_fig(fig, f"fig_P1_four_families_{'meanpool' if pool == 'mean' else 'lasttoken'}")
+
+def fig_P1_mean(df):
+    return fig_P1(df, pool="mean")
 
 def fig_P2(df):
     fams = [f for f in ("decoder", "encoder") if len(sel(df, family=f, level="M4", overlap=0, grid="p1p2"))]
@@ -79,7 +86,7 @@ def fig_forest(df):
     ax.set_xlabel(r"edge depth $S_{edge}$ (mean, CI95 over seeds)"); ax.invert_yaxis(); fig.tight_layout(); save_fig(fig, "fig_forest_edge_depth")
 
 def make_all_figures(df):
-    for f in (fig_P1, fig_P2, fig_S3, fig_forest):
+    for f in (fig_P1, fig_P1_mean, fig_P2, fig_S3, fig_forest):
         try:
             f(df)
         except Exception as e:

@@ -29,8 +29,11 @@ def load_npz(rdir, name):
 def measure(model, W, rdir, variant, family):
     """Đo một mô hình trên tập đo chính + tập dò S3, lưu {variant}.npz.
     Biểu diễn câu: họ hai chiều (encoder, diffusion) = trung bình theo từ; họ causal (decoder, MoE) = trạng thái ở token nội dung
-    cuối, vị trí duy nhất đã thấy cả câu (trung bình theo từ trộn các tiền tố khác nhau khi trật tự từ khác nhau)."""
+    cuối, vị trí duy nhất đã thấy cả câu (trung bình theo từ trộn các tiền tố khác nhau khi trật tự từ khác nhau).
+    Họ causal lưu thêm {variant}_mean.npz = số đo theo trung bình theo từ (như họ hai chiều / Study 1) để đối chiếu cách đo."""
     Z, _, Zl = extract_eval(model, W["eval_ids"], W["eval_wid"], last=True, desc=f"[{variant}] trích eval")
+    if model.causal:
+        save_npz(rdir, f"{variant}_mean", compute_metrics(Z, desc=f"[{variant}] số đo (trung bình theo từ)"))
     Z = Zl if model.causal else Z
     arrs = compute_metrics(Z, desc=f"[{variant}] số đo")
     _, Zp = extract_eval(model, W["probe_ids"], W["probe_wid"], pick=W["probe_subj"], desc=f"[{variant}] trích probe S3")
