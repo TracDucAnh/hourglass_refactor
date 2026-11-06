@@ -14,7 +14,7 @@ SMOKE: false  # True: chạy thử cực nhỏ (vài phút, lưu ở study2a_smo
 D_PCA: 64
 N_RANK_BINS: 12  # S3: bin theo floor(log2(hạng)) của danh từ (hạng 1..2500 -> 0..11)
 FORCE_RERUN: false
-RUN_GRIDS: ["pilot_conv"]  # pilot_conv | gate_g2 | smoke | p1p2 | moe_diff | mask_ablation | anchors
+RUN_GRIDS: ["pilot_conv"]  # pilot_conv | gate_g2 | smoke | p1p2 | moe_diff | p2_seeds | mask_ablation | anchors
 FAMILY: null  # null = mọi họ; decoder | encoder | moe | diffusion = chỉ chạy run của họ đó (xem study2a_<họ>.yaml)
 # Ngân sách huấn luyện theo họ (SEQ_MULT; epoch trên pool 1.6M = 1.92 x SEQ_MULT). Áp cho mọi experiment (kể cả study2a_grids),
 # trừ run tự đặt seq_mult (pilot_conv). decoder: chốt bằng pilot_conv (~80% run p1p2 hội tụ ở v2); MoE / encoder / diffusion: ước lượng

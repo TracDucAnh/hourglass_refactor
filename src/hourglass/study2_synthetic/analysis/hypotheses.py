@@ -71,19 +71,20 @@ def test_P1(df):
     return _res("P1", verdict, ev, t)
 
 P2_CONTRASTS = (("SEM", "LM"), ("SEM", "SURF"), ("SURF", "LM"))
-P2_METRICS = ("S_edge", "G_at_kstar", "rho_star", "w")      # độ sâu, đỉnh G, vị trí, độ rộng
+P2_METRICS = ("w", "rho_star", "S_edge", "G_at_kstar")      # P2 dự đoán độ rộng, vị trí; độ sâu, đỉnh G chỉ mô tả
+W_MARGIN = 1.0 / (K_LAYERS + 1)                             # một tầng: w = tỉ lệ tầng (trong K+1 tầng) thuộc dải eo
 
 def test_P2(df):
-    """P2: waist đi theo tác vụ - bằng ƯỚC LƯỢNG như P1. Với mỗi (họ, mức) và mỗi cặp tác vụ (SEM-LM, SEM-SURF, SURF-LM): hiệu số
-    ghép theo seed của độ sâu S_edge, đỉnh G_k*, vị trí rho* và độ rộng w; báo trung bình từng tác vụ, hiệu số với CI95 (t) qua
-    seed, và Wilcoxon hai phía (mô tả mức nhất quán về dấu qua seed; kết luận theo CI).
-      độ sâu đổi theo tác vụ <=> CI95 của hiệu S_edge ở ít nhất một cặp không chứa 0
-      vị trí dịch             <=> CI95 của hiệu rho* không chứa 0 và |hiệu| > RHO_MARGIN (rho* đã chuẩn hóa theo độ sâu mạng)
-      vị trí cố định          <=> CI95 của hiệu rho* ở mọi cặp nằm trong [-RHO_MARGIN, RHO_MARGIN]
-      eo cố định              <=> vị trí cố định và độ sâu không đổi
-    Kết luận chính: M4 (cả bốn họ); M0 / M2 (decoder, encoder) là mô tả. Đỉnh G và độ rộng chỉ mô tả (độ rộng không xác định
-    khi eo nông). gate_g2 không dùng (trùng cấu hình p1p2)."""
-    d0 = sel(df, overlap=0, grid=["p1p2", "moe_diff", "smoke"])
+    """P2 theo đúng phát biểu của paper: "The waist sits where later layers need only content. A task that needs surface form
+    in the middle layers makes the waist narrower or moves it." Dự đoán cho 2a: rộng nhất ở SEM, hẹp hơn hoặc dịch ở SURF.
+    Bị bác nếu eo cố định bất kể tác vụ. Phép so CHÍNH: SEM với SURF ở M4, cả bốn họ, hiệu số ghép theo seed (CI95 t):
+      SURF hẹp hơn  <=> CI95 của w(SEM) - w(SURF) > 0
+      eo dịch       <=> CI95 của rho*(SEM) - rho*(SURF) không chứa 0 và |hiệu| > RHO_MARGIN
+      eo cố định    <=> CI95 của hiệu w trong +-W_MARGIN (một tầng) và CI95 của hiệu rho* trong +-RHO_MARGIN
+    Họ ủng hộ P2 nếu SURF hẹp hơn hoặc eo dịch; bác nếu eo cố định; còn lại chưa kết luận. Các dòng role = "mô tả" (độ sâu,
+    đỉnh G, các cặp có LM, mức M0 / M2) không dùng cho kết luận P2 - vd. SEM làm eo SÂU hơn LM là một phát hiện riêng.
+    Seed: 0-5 từ p1p2 / moe_diff, 6-11 từ p2_seeds (chỉ SEM, SURF ở M4) -> phép so chính có tới 12 seed."""
+    d0 = sel(df, overlap=0, grid=["p1p2", "moe_diff", "p2_seeds", "smoke"])
     rows = []
     for fam in FAMILIES:
         for lv in LEVELS:
@@ -92,46 +93,44 @@ def test_P2(df):
                 continue
             for m in P2_METRICS:
                 piv = x.pivot_table(index="seed", columns="task", values=m)
-                part = []
                 for a, b in P2_CONTRASTS:
                     if a not in piv.columns or b not in piv.columns:
                         continue
                     d = (piv[a] - piv[b]).dropna().values
                     mu, lo, hi = _mci(d)
-                    part.append(dict(family=fam, level=lv, metric=m, contrast=f"{a}-{b}", n_seed=len(d), mean_a=float(piv[a].mean()),
-                                     mean_b=float(piv[b].mean()), diff=mu, lo=lo, hi=hi, p=wilcoxon_p(d, alt="two-sided")))
-                rows += part
+                    main = lv == "M4" and (a, b) == ("SEM", "SURF") and m in ("w", "rho_star")
+                    rows.append(dict(family=fam, level=lv, metric=m, contrast=f"{a}-{b}", role="P2" if main else "mô tả", n_seed=len(d),
+                                     mean_a=float(piv[a].mean()), mean_b=float(piv[b].mean()), diff=mu, lo=lo, hi=hi,
+                                     p=wilcoxon_p(d, alt="two-sided")))
     t = pd.DataFrame(rows)
     if t.empty:
         return _res("P2", NO_DATA, "")
-    t["excl0"] = (t.lo > 0) | (t.hi < 0)
-    summ = {}
-    for (fam, lv), g in t.groupby(["family", "level"], sort=False):
-        dep, pos = g[g.metric == "S_edge"], g[g.metric == "rho_star"]
-        depth = bool(dep.excl0.any())
-        shift = bool((pos.excl0 & (pos["diff"].abs() > RHO_MARGIN)).any())
-        fixed_pos = bool(len(pos) and ((pos.lo >= -RHO_MARGIN) & (pos.hi <= RHO_MARGIN)).all())
-        summ[(fam, lv)] = dict(depth_changes=depth, position_shifts=shift, position_fixed=fixed_pos,
-                               task_matters=depth or shift, waist_fixed=fixed_pos and not depth)
-    for k in ("depth_changes", "position_shifts", "position_fixed", "task_matters", "waist_fixed"):
-        t[k] = [summ[(r.family, r.level)][k] for r in t.itertuples()]
-    fmt = lambda g, m: ", ".join(f"{r.contrast} {r.diff:+.3f} [{r.lo:+.3f}, {r.hi:+.3f}]" for r in g[g.metric == m].itertuples())
-    m4 = {f: s for (f, lv), s in summ.items() if lv == "M4"}
-    parts = []
-    for fam, s in m4.items():
-        g = t[(t.family == fam) & (t.level == "M4")]
-        what = "độ sâu" * s["depth_changes"] + (" + " if s["depth_changes"] and s["position_shifts"] else "") + "vị trí" * s["position_shifts"]
-        tag = f"đổi theo tác vụ ({what})" if s["task_matters"] else ("eo cố định" if s["waist_fixed"] else "chưa rõ")
-        parts.append(f"{fam}: {tag}; độ sâu {fmt(g, 'S_edge')}; vị trí {fmt(g, 'rho_star')}")
-    ev = "M4 - " + "; ".join(parts)
-    other = [f"{f} {lv}: " + ("đổi theo tác vụ" if s["task_matters"] else "không rõ") for (f, lv), s in summ.items() if lv != "M4"]
-    if other:
-        ev += " | mức khác (mô tả): " + ", ".join(other)
-    if not m4:
+    res, parts = {}, []
+    for fam in FAMILIES:
+        g = t[(t.family == fam) & (t.role == "P2")].set_index("metric")
+        if not {"w", "rho_star"} <= set(g.index):
+            continue
+        w, r = g.loc["w"], g.loc["rho_star"]
+        narrower = bool(w["lo"] > 0)
+        shifted = bool((r["lo"] > 0 or r["hi"] < 0) and abs(r["diff"]) > RHO_MARGIN)
+        fixed = bool(w["lo"] >= -W_MARGIN and w["hi"] <= W_MARGIN and r["lo"] >= -RHO_MARGIN and r["hi"] <= RHO_MARGIN)
+        why = " + ".join(s for s, ok in (("SURF hẹp hơn", narrower), ("eo dịch", shifted)) if ok)
+        res[fam] = "ủng hộ (" + why + ")" if why else ("bác (eo cố định)" if fixed else "chưa kết luận")
+        parts.append(f"{fam}: {res[fam]}; w SEM-SURF {w['diff']:+.3f} [{w['lo']:+.3f}, {w['hi']:+.3f}] (SEM {w['mean_a']:.2f}, "
+                     f"SURF {w['mean_b']:.2f}); ρ* SEM-SURF {r['diff']:+.3f} [{r['lo']:+.3f}, {r['hi']:+.3f}]; n_seed={int(w['n_seed'])}")
+    t["family_verdict"] = t.family.map(res)
+    ev = "M4, SEM so với SURF - " + "; ".join(parts)
+    miss = [f for f in FAMILIES if f not in res]
+    if miss:
+        ev += f"; chưa có dữ liệu: {miss}"
+    sup = [f for f, v in res.items() if v.startswith("ủng hộ")]
+    if not res:
         return _res("P2", "chưa kết luận", ev, t)
-    if all(s["waist_fixed"] for s in m4.values()):
+    if len(sup) == len(FAMILIES):
+        return _res("P2", "ủng hộ", ev, t)
+    if all(v.startswith("bác") for v in res.values()):
         return _res("P2", "không ủng hộ", ev, t)
-    return _res("P2", "ủng hộ" if all(s["task_matters"] for s in m4.values()) else "chưa kết luận", ev, t)
+    return _res("P2", f"ủng hộ một phần ({', '.join(sup)})" if sup else "chưa kết luận", ev, t)
 
 def _inverted_u(y, cnt, min_cnt=10):
     """y: G theo bin hạng. Trả về (hệ số bậc 2, đỉnh, độ dốc đầu, độ dốc cuối, SSE tuyến-đơn-điệu-tăng, SSE bậc 2)."""

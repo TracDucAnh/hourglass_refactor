@@ -41,8 +41,9 @@ def build_report(df, results):
     w("\n## Lưu ý đọc kết quả\n- P1 dựa trên ƯỚC LƯỢNG qua seed: ΔS = S_edge(trained) - S_edge(init) với CI95, độ sâu tương đối S/G*, vị trí ρ* "
       "(xem table_P1.csv). Cột frac_waist / frac_runs_study1 là tỉ lệ run qua tiêu chí từng run của Study 1 (đỉnh G trong thân, "
       "CI dưới của edge depth > 0.05, CKA khớp, vượt `init`) - chỉ để đối chiếu, không dùng để kết luận.\n"
-      "- P2 dựa trên ƯỚC LƯỢNG qua seed: hiệu số giữa các tác vụ (SEM-LM, SEM-SURF, SURF-LM) của độ sâu, đỉnh G, vị trí, độ rộng "
-      "với CI95 (xem table_P2.csv), cho cả bốn họ.\n"
+      "- P2 theo đúng phát biểu của paper: SEM so với SURF ở M4 (tới 12 seed), SURF hẹp hơn (độ rộng) hoặc eo dịch (vị trí), "
+      "bác nếu eo cố định; ước lượng ghép theo seed với CI95. Dòng role = mô tả trong table_P2.csv (độ sâu, cặp có LM, M0/M2) "
+      "không dùng cho kết luận P2.\n"
       "- Hình hourglass lý tưởng của Corollary 1 (quay lại H(Λ) ở tầng cuối) hiếm khi đạt: so G_K với G_0 trong bảng đặc trưng.\n"
       "- Biểu diễn câu: họ causal (decoder, MoE) lấy ở token nội dung cuối; họ hai chiều (encoder, diffusion) trung bình theo từ.\n"
       "- D_anchor là chẩn đoán (lưới mask_ablation, anchors), không phải giả thuyết của paper; P1/P2/S3 không dùng các lưới này.\n")

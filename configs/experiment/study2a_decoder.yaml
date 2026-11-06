@@ -6,4 +6,4 @@ defaults:
   - experiment/study2a
 
 FAMILY: decoder
-RUN_GRIDS: ["gate_g2", "p1p2", "mask_ablation", "anchors"]
+RUN_GRIDS: ["gate_g2", "p1p2", "p2_seeds", "mask_ablation", "anchors"]

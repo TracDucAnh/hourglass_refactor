@@ -4,4 +4,4 @@ defaults:
   - experiment/study2a
 
 FAMILY: diffusion
-RUN_GRIDS: ["moe_diff"]
+RUN_GRIDS: ["moe_diff", "p2_seeds"]

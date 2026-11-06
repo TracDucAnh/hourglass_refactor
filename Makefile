@@ -51,19 +51,19 @@ study2a-gate:   ## Cổng G2 + dự toán GPU-giờ
 study2a-grids:  ## Toàn bộ lưới chính + phân tích
 	scripts/sweep.sh grids $(O)
 
-study2a-all:    ## MAIN RESULTS 2a trọn gói: G2 (chỉ báo cáo) + 168 run (p1p2, moe_diff + chẩn đoán điểm neo) + thử lại run lỗi + phân tích
+study2a-all:    ## MAIN RESULTS 2a trọn gói: G2 (chỉ báo cáo) + 216 run (p1p2, moe_diff, p2_seeds + chẩn đoán điểm neo) + thử lại run lỗi + phân tích
 	scripts/sweep.sh all $(O)
 
-study2a-decoder:   ## Chỉ họ decoder (gate_g2, p1p2, mask_ablation, anchors); chia GPU: O='-o SHARD=0/2'
+study2a-decoder:   ## Chỉ họ decoder (gate_g2, p1p2, p2_seeds, mask_ablation, anchors); chia GPU: O='-o SHARD=0/2'
 	$(PY) scripts/train.py study2a_decoder status $(O)
 
-study2a-encoder:   ## Chỉ họ encoder (p1p2, mask_ablation); chia GPU: O='-o SHARD=0/2'
+study2a-encoder:   ## Chỉ họ encoder (p1p2, p2_seeds, mask_ablation); chia GPU: O='-o SHARD=0/2'
 	$(PY) scripts/train.py study2a_encoder status $(O)
 
-study2a-moe:       ## Chỉ họ MoE (moe_diff)
+study2a-moe:       ## Chỉ họ MoE (moe_diff, p2_seeds)
 	$(PY) scripts/train.py study2a_moe status $(O)
 
-study2a-diffusion: ## Chỉ họ diffusion (moe_diff)
+study2a-diffusion: ## Chỉ họ diffusion (moe_diff, p2_seeds)
 	$(PY) scripts/train.py study2a_diffusion status $(O)
 
 study2a-report:    ## Phân tích + hình + báo cáo Study 2a (sau khi mọi họ chạy xong)

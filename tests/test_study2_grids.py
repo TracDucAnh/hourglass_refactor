@@ -4,7 +4,7 @@ import pytest
 
 pytest.importorskip("torch")
 
-MAIN_GRIDS = {"p1p2": 108, "moe_diff": 36, "mask_ablation": 12, "anchors": 12}
+MAIN_GRIDS = {"p1p2": 108, "moe_diff": 36, "p2_seeds": 48, "mask_ablation": 12, "anchors": 12}
 
 
 def test_main_grids_attempt_every_run_without_gate():

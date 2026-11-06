@@ -12,7 +12,7 @@ Study 2a chỉ kiểm **ba** giả thuyết trên ngôn ngữ tổng hợp, khô
 | Giả thuyết | Vai trò | Câu hỏi | Dữ liệu | Tiêu chí (`analysis/hypotheses.py`) |
 |---|---|---|---|---|
 | **P1** | chính | Cả 4 họ đều có waist? | `p1p2`, `moe_diff` (overlap 0 %, M4, LM+SEM; các mức / tác vụ khác là mô tả) | **ước lượng qua seed**, không bỏ phiếu theo run: ΔS = S_edge(trained) − S_edge(init) với CI95, độ sâu tương đối S/G\*, vị trí ρ\*; có eo ⇔ CI95 của ΔS > 0 và ρ\* nằm trong (0, 1). Nhãn mô tả như Bảng 9 của paper, theo cận dưới CI95 của S_edge: rõ ≥ 0,20 / vừa 0,10–0,20 / nông 0,05–0,10 / sát ngưỡng < 0,05 (chỉ để đọc). Tỉ lệ run qua tiêu chí từng run của Study 1 (ngưỡng 0,05) chỉ để đối chiếu |
-| **P2** | chính | Waist đi theo tác vụ (LM / SEM / SURF)? | `p1p2`, `moe_diff` (overlap 0 %; kết luận ở M4 cho cả bốn họ, M0/M2 là mô tả) | **ước lượng qua seed** như P1: hiệu số ghép theo seed giữa các tác vụ (SEM−LM, SEM−SURF, SURF−LM) của độ sâu S_edge, đỉnh G\*, vị trí ρ\*, độ rộng w, với CI95. Độ sâu đổi ⇔ CI của hiệu S_edge không chứa 0 (ít nhất một cặp); vị trí dịch ⇔ CI của hiệu ρ\* không chứa 0 và \|hiệu\| > 0,10; eo cố định ⇔ mọi CI của hiệu ρ\* trong ±0,10 và độ sâu không đổi |
+| **P2** | chính | Waist đi theo tác vụ? Paper: *"A task that needs surface form in the middle layers makes the waist narrower or moves it"*; 2a dự đoán rộng nhất ở SEM, hẹp hơn hoặc dịch ở SURF; bị bác nếu eo cố định | **SEM so với SURF ở M4, cả bốn họ**, seed 0–11 (`p1p2` / `moe_diff` + `p2_seeds`) | ước lượng ghép theo seed (CI95): **SURF hẹp hơn** ⇔ CI của w(SEM) − w(SURF) > 0; **eo dịch** ⇔ CI của hiệu ρ\* không chứa 0 và \|hiệu\| > 0,10; **eo cố định (bác)** ⇔ CI hiệu w trong ±1 tầng (1/9) và CI hiệu ρ\* trong ±0,10. Độ sâu, đỉnh G, các cặp có LM, mức M0/M2 chỉ mô tả (`role = mô tả` trong `table_P2.csv`) |
 | **S3** | bổ trợ | Căn chỉnh tại waist theo tần suất khái niệm là chữ U ngược? | tập dò S3 của các run `p1p2`, `moe_diff` (overlap 0 %) | **nới**: độ cong trung bình theo seed < 0 (Wilcoxon p < 0,05) và ≥ 50 % run cong xuống với đỉnh nằm trong khoảng hạng; không kiểm đỉnh dịch theo capacity. G theo bin dùng **đường cơ sở xáo trong từng bin** (khoá `G_rank_w`) |
 | D_anchor | chẩn đoán | Eo nông ở decoder / MoE có do thiếu **điểm neo** chung giữa các ngôn ngữ? | `mask_ablation`, `anchors`, so với `p1p2` (LM, M4) cùng seed | xem mục *Chẩn đoán điểm neo*; không phải giả thuyết của paper, P1/P2/S3 không dùng các lưới này |
 
@@ -31,6 +31,15 @@ trung bình theo từ); cột encoder / diffusion giống nhau ở hai bản. B�
 Run decoder / MoE đã chạy trước thay đổi này không có file `_mean` (không có checkpoint nên phải huấn luyện lại):
 `scripts/train.py study2a_decoder status -o 'RUN_GRIDS=[p1p2]' -o FORCE_RERUN=true` và
 `scripts/train.py study2a_moe status -o FORCE_RERUN=true` (54 + 18 run).
+
+## Vì sao P2 có 12 seed (`p2_seeds`)
+
+Phép so chính của P2 (SEM với SURF ở M4) là hiệu số ghép theo seed. Với 6 seed: hệ số t của CI95 là 2,57 và Wilcoxon một phía
+nhỏ nhất chỉ 0,016, nên các hiệu ứng cỡ một tầng (độ rộng encoder SEM 0,54 so với SURF 0,43) nằm sát ranh giới. Với 12 seed: hệ số t
+2,20 và sai số chuẩn giảm √2 lần, tức CI hẹp lại còn ≈ 60 %. Cũng quan trọng không kém: muốn **bác** P2 phải chứng minh eo cố định
+(CI của hiệu nằm trong ±1 tầng), mà CI rộng thì không bao giờ chứng minh được điều đó. `p2_seeds` thêm seed 6–11 chỉ cho SEM và SURF
+ở M4 (4 họ × 2 tác vụ × 6 seed = 48 run, có 6 thế giới ngôn ngữ mới), nên chỉ P2 đọc lưới này; P1 và S3 vẫn dùng seed 0–5 để LM
+và SEM cân bằng.
 
 ## Chẩn đoán điểm neo (`mask_ablation`, `anchors`)
 
@@ -59,10 +68,10 @@ cũng dùng đúng ngân sách đó.
 
 | Họ | Experiment | Lưới | Ngân sách (`SEQ_MULT_FAMILY`, epoch trên pool 1,6M) | Lệnh |
 |---|---|---|---|---|
-| decoder | `study2a_decoder` | gate_g2 (3) + p1p2 (54) + mask_ablation (6) + anchors (12) = 75 run | ×2 = 6 000 bước ≈ 3,8 epoch | `make study2a-decoder` |
-| encoder | `study2a_encoder` | p1p2 (54) + mask_ablation (6) = 60 run | ×4 = 12 000 bước ≈ 7,7 epoch | `make study2a-encoder` |
-| MoE | `study2a_moe` | moe_diff (18 run) | ×3 = 9 000 bước ≈ 5,8 epoch | `make study2a-moe` |
-| diffusion | `study2a_diffusion` | moe_diff (18 run) | ×5 = 15 000 bước ≈ 9,6 epoch | `make study2a-diffusion` |
+| decoder | `study2a_decoder` | gate_g2 (3) + p1p2 (54) + p2_seeds (12) + mask_ablation (6) + anchors (12) = 87 run | ×2 = 6 000 bước ≈ 3,8 epoch | `make study2a-decoder` |
+| encoder | `study2a_encoder` | p1p2 (54) + p2_seeds (12) + mask_ablation (6) = 72 run | ×4 = 12 000 bước ≈ 7,7 epoch | `make study2a-encoder` |
+| MoE | `study2a_moe` | moe_diff (18) + p2_seeds (12) = 30 run | ×3 = 9 000 bước ≈ 5,8 epoch | `make study2a-moe` |
+| diffusion | `study2a_diffusion` | moe_diff (18) + p2_seeds (12) = 30 run | ×5 = 15 000 bước ≈ 9,6 epoch | `make study2a-diffusion` |
 
 ```bash
 # mỗi dòng một terminal / tmux pane; train.py chạy run_grids rồi in bảng status của họ đó
@@ -75,8 +84,8 @@ CUDA_VISIBLE_DEVICES=3 uv run python scripts/train.py study2a_diffusion status
 make study2a-report        # = uv run python scripts/make_figures.py study2a
 ```
 
-**Cân tải.** Tính theo tổng số bước huấn luyện, encoder nặng nhất (60 × 12 000 ≈ 720 nghìn bước), decoder ≈ 450 nghìn
-(75 × 6 000), MoE + diffusion ≈ 430 nghìn (18 × 9 000 + 18 × 15 000). Bố trí cân hơn: chia encoder làm 2 shard bằng `SHARD=k/n`
+**Cân tải.** Tính theo tổng số bước huấn luyện, encoder ≈ 860 nghìn bước (72 × 12 000), decoder ≈ 520 nghìn
+(87 × 6 000 ≈ 520 nghìn), MoE + diffusion ≈ 720 nghìn (30 × 9 000 + 30 × 15 000). Bố trí cân hơn: chia encoder làm 2 shard bằng `SHARD=k/n`
 (mỗi shard nhận run thứ k, k+n, ... của mỗi lưới; các shard không trùng nhau) và chạy MoE rồi diffusion nối tiếp:
 
 ```bash

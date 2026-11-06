@@ -45,6 +45,10 @@ def grid_configs(name):
                 for f in ("decoder", "encoder") for lv in LEVELS for t in TASKS for s in range(6)]
     if name == "moe_diff":
         return [make_cfg("moe_diff", family=f, task=t, seed=s) for f in ("moe", "diffusion") for t in TASKS for s in range(6)]
+    if name == "p2_seeds":
+        # P2 (SEM so với SURF ở M4) cần nhiều seed hơn: seed 6-11 cho cả bốn họ; seed 0-5 có sẵn trong p1p2 / moe_diff.
+        # Chỉ P2 đọc lưới này (P1, S3 vẫn dùng seed 0-5 để LM / SEM cân bằng).
+        return [make_cfg("p2_seeds", family=f, task=t, seed=s) for f in FAMILIES for t in ("SEM", "SURF") for s in range(6, 12)]
     if name == "mask_ablation":
         # Chẩn đoán: [MASK] chung có phải điểm neo tạo eo? encoder bỏ [MASK] (thay bằng token cùng câu) / decoder che 15% đầu vào
         # bằng [MASK]. LM, M4, 6 seed; đối chứng = run LM, M4 cùng seed trong p1p2 (test_anchor).
@@ -55,5 +59,5 @@ def grid_configs(name):
         return [make_cfg("anchors", family="decoder", task="LM", seed=s, anchor=a) for a in (0.05, 0.2) for s in range(6)]
     raise KeyError(name)
 
-ALL_GRIDS = ["pilot_conv", "gate_g2", "smoke", "p1p2", "moe_diff", "mask_ablation", "anchors"]
+ALL_GRIDS = ["pilot_conv", "gate_g2", "smoke", "p1p2", "moe_diff", "p2_seeds", "mask_ablation", "anchors"]
 print({g: len(grid_configs(g)) for g in ALL_GRIDS})

@@ -41,22 +41,30 @@ def fig_P1_mean(df):
     return fig_P1(df, pool="mean")
 
 def fig_P2(df):
-    fams = [f for f in ("decoder", "encoder") if len(sel(df, family=f, level="M4", overlap=0, grid="p1p2"))]
+    """P2: đường G theo tác vụ của cả bốn họ (M4), và hai đại lượng P2 dự đoán - độ rộng w và vị trí rho* - theo tác vụ
+    (trung bình, CI95 t qua seed). SEM / SURF gồm cả seed 6-11 của p2_seeds."""
+    df = sel(df, overlap=0, level="M4", grid=["p1p2", "moe_diff", "p2_seeds", "smoke"])
+    fams = [f for f in FAMILIES if len(sel(df, family=f))]
     if not fams:
         return print("[P2] chưa có dữ liệu")
-    fig, axes = plt.subplots(1, len(fams) + 1, figsize=(3.0 * (len(fams) + 1) + 0.4, 3.2), squeeze=False); axes = axes[0]
+    nf = len(fams)
+    fig = plt.figure(figsize=(2.6 * nf + 0.4, 6.2)); gs = fig.add_gridspec(2, 2 * nf)
     for j, fam in enumerate(fams):
+        ax = fig.add_subplot(gs[0, 2 * j: 2 * j + 2])
         for t in TASKS:
-            draw(axes[j], sel(df, family=fam, level="M4", overlap=0, grid="p1p2", task=t), "G", C[t], mark_peak=True)
-        _xlab(axes[j]); subcap(axes[j], f"({'ab'[j]}) {fam}, level M4"); axes[j].set_ylabel(r"alignment $\bar G_k$")
-    ax = axes[-1]
-    for fi, fam in enumerate(fams):
-        for ti, t in enumerate(TASKS):
-            s = sel(df, family=fam, level="M4", overlap=0, grid="p1p2", task=t)
-            if len(s):
-                m, h = s.w.mean(), (stats.t.ppf(0.975, len(s) - 1) * s.w.std(ddof=1) / math.sqrt(len(s)) if len(s) > 1 else 0)
-                ax.errorbar(fi + (ti - 1) * 0.18, m, yerr=h, fmt="o", color=C[t], capsize=3)
-    ax.set_xticks(range(len(fams))); ax.set_xticklabels(fams); ax.set_ylabel(r"waist width $w$"); subcap(ax, f"({'abc'[len(fams)]}) waist width by task")
+            draw(ax, sel(df, family=fam, task=t), "G", C[t], mark_peak=True)
+        ax.set_xlim(0, 1); _xlab(ax); subcap(ax, f"({'abcd'[j]}) {fam}, level M4")
+        if j == 0:
+            ax.set_ylabel(r"alignment $\bar G_k$")
+    for k, (m, lab, cap) in enumerate((("w", r"waist width $w$", "waist width by task"), ("rho_star", r"waist position $\rho^*$", "waist position by task"))):
+        ax = fig.add_subplot(gs[1, k * nf: (k + 1) * nf])
+        for fi, fam in enumerate(fams):
+            for ti, t in enumerate(TASKS):
+                s = sel(df, family=fam, task=t)
+                if len(s):
+                    mu, lo, hi = _mci(s[m].values)
+                    ax.errorbar(fi + (ti - 1) * 0.18, mu, yerr=[[mu - lo], [hi - mu]] if np.isfinite(lo) else None, fmt="o", color=C[t], capsize=3)
+        ax.set_xticks(range(nf)); ax.set_xticklabels(fams); ax.set_ylabel(lab); subcap(ax, f"({'ef'[k]}) {cap}")
     legend_top(fig, _lines([(C[t], "-", t) for t in TASKS])); fig.tight_layout(); save_fig(fig, "fig_P2_task_dependence")
 
 def fig_S3(df):

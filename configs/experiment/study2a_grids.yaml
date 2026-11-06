@@ -1,7 +1,8 @@
 # Study 2a — toàn bộ lưới chính (sau khi qua G2), theo thứ tự gợi ý của Cell C6:
 #   p1p2 (108 run: decoder, encoder x M0/M2/M4 x LM/SEM/SURF x 6 seed) | moe_diff (36 run: MoE, diffusion x M4 x 3 tác vụ x 6 seed)
+#   + p2_seeds (48 run: seed 6-11, SEM / SURF ở M4, bốn họ - chỉ P2 dùng)
 #   + chẩn đoán điểm neo: mask_ablation (12 run) | anchors (12 run)
 defaults:
   - experiment/study2a
 
-RUN_GRIDS: ["p1p2", "moe_diff", "mask_ablation", "anchors"]
+RUN_GRIDS: ["p1p2", "moe_diff", "p2_seeds", "mask_ablation", "anchors"]

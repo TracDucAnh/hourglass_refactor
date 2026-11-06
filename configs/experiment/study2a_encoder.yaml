@@ -5,4 +5,4 @@ defaults:
   - experiment/study2a
 
 FAMILY: encoder
-RUN_GRIDS: ["p1p2", "mask_ablation"]
+RUN_GRIDS: ["p1p2", "p2_seeds", "mask_ablation"]
