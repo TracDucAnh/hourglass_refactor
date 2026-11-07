@@ -1,0 +1,6 @@
+# Study 2b — pilot chọn lượng dữ liệu mỗi ngôn ngữ (DATA_FRAC): decoder d=384, |L|=2, 4 mức dữ liệu x 2 seed, kèm twin.
+# Chọn mức nhỏ nhất mà đặc trưng eo và ΔA ổn định và twin không kém mô hình chung quá TWIN_EXCESS_MAX (table_pilot.csv).
+defaults:
+  - experiment/study2b
+
+RUN_GRIDS: [pilot_data]

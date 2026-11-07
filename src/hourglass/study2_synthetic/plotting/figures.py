@@ -9,6 +9,8 @@
 # ============================================================
 # Cell D5 — Hình (mỗi hình ứng với một giả thuyết)
 # ============================================================
+LEVEL_NAME = {"M0": "Lexicon", "M2": "Order", "M4": "Syntax"}   # tên mức trong hình / paper (code giữ M0 / M2 / M4)
+
 def fig_P1(df, pool="last"):
     """pool = "last": họ causal (decoder, MoE) đo ở token nội dung cuối (cách đo chính); "mean": họ causal đo theo trung bình
     theo từ ({variant}_mean.npz). Họ hai chiều (encoder, diffusion) luôn theo trung bình theo từ, giống nhau ở hai hình."""
@@ -53,7 +55,7 @@ def fig_P2(df):
         ax = fig.add_subplot(gs[0, 2 * j: 2 * j + 2])
         for t in TASKS:
             draw(ax, sel(df, family=fam, task=t), "G", C[t], mark_peak=True)
-        ax.set_xlim(0, 1); _xlab(ax); subcap(ax, f"({'abcd'[j]}) {fam}, level M4")
+        ax.set_xlim(0, 1); _xlab(ax); subcap(ax, f"({'abcd'[j]}) {fam}, level {LEVEL_NAME['M4']}")
         if j == 0:
             ax.set_ylabel(r"alignment $\bar G_k$")
     for k, (m, lab, cap) in enumerate((("w", r"waist width $w$", "waist width by task"), ("rho_star", r"waist position $\rho^*$", "waist position by task"))):
@@ -90,7 +92,7 @@ def fig_forest(df):
     fig, ax = plt.subplots(figsize=(4.8, 0.22 * len(g) + 1.2))
     for i, r in g.iterrows():
         ax.errorbar(r["mean"], i, xerr=r.h, fmt="o", color=C[r.family], capsize=2, ms=4)
-    ax.axvline(WAIST_S_FLOOR, color="k", ls=":", lw=1); ax.set_yticks(range(len(g))); ax.set_yticklabels([f"{r.family} {r.level} {r.task}" for r in g.itertuples()], fontsize=7)
+    ax.axvline(WAIST_S_FLOOR, color="k", ls=":", lw=1); ax.set_yticks(range(len(g))); ax.set_yticklabels([f"{r.family} {LEVEL_NAME.get(r.level, r.level)} {r.task}" for r in g.itertuples()], fontsize=7)
     ax.set_xlabel(r"edge depth $S_{edge}$ (mean, CI95 over seeds)"); ax.invert_yaxis(); fig.tight_layout(); save_fig(fig, "fig_forest_edge_depth")
 
 def make_all_figures(df):

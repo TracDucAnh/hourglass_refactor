@@ -4,7 +4,7 @@ O  ?=            # override tham số, vd: make study1 O='-o RUN_MODELS=[xlmr_ba
 
 .PHONY: help install install-core lint format test test-fast g0 \
         study1-g1 study1 study2a-smoke study2a-pilot study2a-gate study2a-grids \
-        study2a-all study2a-decoder study2a-encoder study2a-moe study2a-diffusion study2a-report study4-prepare study4-pilot study4 figures clean
+        study2a-all study2a-decoder study2a-encoder study2a-moe study2a-diffusion study2a-report study2b-smoke study2b-data study2b-pilot study2b-grids study2b-report study4-prepare study4-pilot study4 figures clean
 
 help:           ## Liệt kê lệnh
 	@grep -E '^[a-zA-Z0-9_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -68,6 +68,22 @@ study2a-diffusion: ## Chỉ họ diffusion (moe_diff, p2_seeds)
 
 study2a-report:    ## Phân tích + hình + báo cáo Study 2a (sau khi mọi họ chạy xong)
 	$(PY) scripts/make_figures.py study2a $(O)
+
+# ---------------------------------------------------------------- Study 2b (ngôn ngữ tự nhiên)
+study2b-smoke:     ## Study 2b: cả đường ống trên dữ liệu toy (CPU, < 1 phút)
+	$(PY) -m hourglass run study2b_smoke prepare_data build_tokens run_grids analyze $(O)
+
+study2b-data:      ## Study 2b: FLORES, byte premium, corpus FineWeb-2, tokenizer + mã hoá (CPU, cần mạng)
+	$(PY) -m hourglass run study2b_grids prepare_data build_tokens --no-gpu -o 'RUN_GRIDS=[pilot_data,p3,p3_families,s4,s2,holdout_p4]' $(O)
+
+study2b-pilot:     ## Study 2b: pilot chọn DATA_FRAC (GPU) -> results/study2b/table_pilot.csv
+	$(PY) scripts/train.py study2b_pilot status analyze $(O)
+
+study2b-grids:     ## Study 2b: p3 -> p3_families -> s4 -> s2 -> holdout_p4 (GPU; chia GPU: O='-o FAMILY=decoder -o SHARD=0/2')
+	$(PY) scripts/train.py study2b_grids status $(O)
+
+study2b-report:    ## Study 2b: phân tích + hình + báo cáo
+	$(PY) scripts/make_figures.py study2b $(O)
 
 # ---------------------------------------------------------------- Study 4 (cần extra study4)
 study4-prepare: ## Dữ liệu Study 4: tách từ, tần suất FineWeb-2, Eflomal, ITEMS (CPU, lâu, có cache)

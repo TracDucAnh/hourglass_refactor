@@ -1,0 +1,36 @@
+# Study 2b — ngôn ngữ tự nhiên: eo và căn chỉnh theo capacity và số ngôn ngữ (P3, S2, S4; P4, S5 phụ).
+# Thứ tự: prepare_data -> build_tokens -> study2b_pilot (chốt DATA_FRAC) -> study2b_grids -> analyze.
+defaults:
+  - data/natural
+  - model/natural_lm
+  - trainer/natural
+
+study: study3_natural
+STUDY_DIR: ${OUTPUT_DIR}/study2b                    # corpus/, tokenizers/, runs/ (code tự thêm _smoke khi SMOKE=true)
+CKPT_DIR: ${ROOT}/study3_natural/checkpoints        # decoder ở định dạng HF: Study 4 tự đăng ký (twin_* bị bỏ qua)
+ANALYSIS_DIR: ${RESULTS_DIR}/study2b
+FIG_DIR: ${FIGURE_DIR}/study2b
+
+SMOKE: false
+READOUT: family                      # family: causal = token cuối, hai chiều = trung bình (chốt trước, như 2a) | last | mean
+D_PCA: 64
+DELTA_A_MARGIN: 0.05                 # biên "ΔA ≈ 0" (paper: max(0.05, 1 SD seed))
+METRIC_VERSION: 1
+# ---- lưới ----
+D_P3: [256, 384, 512]
+D_S2: [128, 192, 256, 320, 384, 448, 512]
+D_HOLDOUT: [320]
+D_FAMILY: 384                        # cỡ duy nhất của MoE / diffusion
+D_S4: 384
+N_SEEDS: 3
+N_SEEDS_S2: 10
+S2_FRAC: 0.25
+PILOT_FRACS: [0.125, 0.25, 0.5, 1.0]
+S4_LANG: rus_Cyrl                    # ngôn ngữ X của S4: thuộc 4 ngôn ngữ đầu của NESTINGS.A, không phải tiếng Anh
+S4_TOK_W: [0.25, 4.0]                # trọng số của X khi train BPE: 0.25 -> X tốn token, 4 -> X rẻ
+S4_SHARE_MULT: 2.0                   # "X nhiều dữ liệu": X dùng gấp đôi phần corpus của mỗi ngôn ngữ khác
+# ---- điều khiển chạy ----
+RUN_GRIDS: [pilot_data]              # smoke | pilot_data | p3 | p3_families | s2 | s4 | holdout_p4
+FAMILY: null                         # null = mọi họ; decoder | moe | diffusion
+SHARD: null                          # null | "k/n": chỉ chạy run thứ k, k+n, ... của mỗi lưới (chia cho n GPU)
+FORCE_RERUN: false

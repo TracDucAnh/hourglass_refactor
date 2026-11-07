@@ -16,7 +16,7 @@ import os
 
 from hourglass.config import compose, list_experiments
 
-STUDIES = ("study1_open_models", "study2_synthetic", "study4_frequency")
+STUDIES = ("study1_open_models", "study2_synthetic", "study3_natural", "study4_frequency")
 
 
 def study_module(name: str):

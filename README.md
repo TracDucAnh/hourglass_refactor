@@ -48,6 +48,10 @@ make study2a-moe
 make study2a-diffusion
 make study2a-report
 
+# Study 2b (GPU; ngôn ngữ tự nhiên, xem docs/studies/study2b.md)
+make study2b-smoke     # đường ống trên dữ liệu toy (CPU)
+make study2b-data      # FineWeb-2 + FLORES + tokenizer  ->  make study2b-pilot  ->  make study2b-grids  ->  make study2b-report
+
 # Study 4 (extra study4; bước chuẩn bị chạy lâu nhưng có cache)
 make study4-prepare    # tách từ + UPOS, đếm FineWeb-2, Eflomal + MUSE/Wiktionary -> ITEMS
 make study4-pilot      # XLM-R large trước, rồi: make study4
@@ -106,4 +110,4 @@ config và các hàm dùng chung chuyển vào `common/`. Chi tiết: [docs/arch
 
 - [docs/known_issues.md](docs/known_issues.md) ghi các vấn đề phát hiện khi tổ chức lại, **chưa sửa** vì giữ
   nguyên logic — quan trọng nhất: Study 1 báo lỗi `UnboundLocalError: JS` ở mọi run mới của model không phải MoE.
-- Mọi kết luận chỉ "ở quy mô nhỏ"; Study 2b/2c, 3 và 5 của kế hoạch chưa có trong repo.
+- Mọi kết luận chỉ "ở quy mô nhỏ"; Study 2c, 3 và 5 của kế hoạch chưa có trong repo (Study 2b có, chưa chạy thật).

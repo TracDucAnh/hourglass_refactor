@@ -1,0 +1,15 @@
+# Study 2b — ngôn ngữ tự nhiên: FineWeb-2 (FineWeb sample-10BT cho tiếng Anh), đo trên FLORES-200 devtest.
+# Hai thứ tự lồng 2 ⊂ 4 ⊂ 8: A cân bằng trật tự từ cơ bản ở mọi cỡ; B dồn các ngôn ngữ SOV / VSO về cuối
+# (|L| lớn = khoảng cách typology lớn). So A với B tách hiệu ứng |L| khỏi hiệu ứng khoảng cách typology.
+NESTINGS:
+  A: [eng_Latn, hin_Deva, rus_Cyrl, tur_Latn, zho_Hans, jpn_Jpan, fra_Latn, arb_Arab]
+  B: [eng_Latn, fra_Latn, rus_Cyrl, zho_Hans, hin_Deva, tur_Latn, jpn_Jpan, arb_Arab]
+L_LIST: [2, 4, 8]
+DATA_SOURCE: fineweb                 # fineweb | toy (chỉ để chạy thử đường ống)
+CORPUS_BYTES_ENG: 800000000          # corpus mỗi ngôn ngữ = số byte này x byte premium (≈ 200M token tiếng Anh)
+DATA_FRAC: 0.5                       # phần corpus một run dùng (≈ 100M token / ngôn ngữ); CHỐT bằng lưới pilot_data
+VAL_FRAC: 0.002                      # đuôi corpus giữ ra làm val
+N_EVAL: null                         # câu FLORES devtest để đo (null = 1012)
+VOCAB: 64000                         # BPE chung (< 65536 -> token lưu uint16)
+TOK_TRAIN_BYTES_ENG: 50000000        # văn bản train BPE mỗi ngôn ngữ (x premium x trọng số)
+SEQ_LEN: 512

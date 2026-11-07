@@ -1,0 +1,16 @@
+# Study 2b — giao thức huấn luyện: AdamW, warmup rồi cosine, không dừng sớm. Mô hình chung thấy mỗi token một lần;
+# twin lặp dữ liệu của mình TWIN_EPOCHS lần (<= ~4 epoch gần như dữ liệu mới) để không kém mô hình chung vì thiếu bước.
+BATCH_SEQS: 128                      # 128 x 512 = 65k token / bước
+LR_BY_D: {128: 2.0e-3, 192: 1.5e-3, 256: 1.2e-3, 320: 1.0e-3, 384: 1.0e-3, 448: 8.0e-4, 512: 7.0e-4}
+WARMUP_FRAC: 0.02
+MIN_LR_FRAC: 0.1
+WEIGHT_DECAY: 0.1
+JOINT_EPOCHS: 1
+TWIN_EPOCHS: 2
+EPOCH_MULT_FAMILY: {decoder: 1.0, moe: 1.0, diffusion: 2.0}   # Study 2a: diffusion cần huấn luyện lâu hơn
+DIFF_T_MIN: 0.05
+N_EVALS: 10
+VAL_CHUNKS: 64
+CONV_TOL: 0.02                       # nats: val còn giảm hơn mức này ở ~15% bước cuối -> chưa hội tụ
+TWIN_EXCESS_MAX: 0.10                # nats: twin kém mô hình chung quá mức này -> ΔA có thể bị thổi phồng
+TRAIN_VERSION: 1

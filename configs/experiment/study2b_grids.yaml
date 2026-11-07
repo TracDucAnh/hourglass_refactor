@@ -1,0 +1,5 @@
+# Study 2b — các lưới chính, theo thứ tự ưu tiên: p3 (giả thuyết chính) -> p3_families -> s4 -> s2 -> holdout_p4.
+defaults:
+  - experiment/study2b
+
+RUN_GRIDS: [p3, p3_families, s4, s2, holdout_p4]

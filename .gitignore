@@ -49,3 +49,6 @@ paper/**/*.fls
 *.swp
 .idea/
 .vscode/
+
+paper/
+results/study2a

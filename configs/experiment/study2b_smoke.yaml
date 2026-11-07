@@ -1,0 +1,27 @@
+# Study 2b chạy thử cực nhỏ trên dữ liệu toy (không tải gì, CPU được, vài phút): kiểm cả đường ống trước khi tốn GPU.
+defaults:
+  - experiment/study2b
+
+SMOKE: true
+DATA_SOURCE: toy
+TOY_N_DOCS: 400
+TOY_N_EVAL: 120
+VOCAB: 600
+TOK_TRAIN_BYTES_ENG: 200000
+DATA_FRAC: 0.5
+VAL_FRAC: 0.05
+VAL_CHUNKS: 4
+SEQ_LEN: 64
+BATCH_SEQS: 16
+N_LAYERS: 2
+N_EVALS: 3
+D_PCA: 16
+LR_BY_D: {64: 3.0e-3}
+D_P3: [64]
+D_FAMILY: 64
+D_S4: 64
+L_LIST: [2, 4]
+N_SEEDS: 2
+RUN_GRIDS: [smoke]
+ANALYSIS_DIR: ${OUTPUT_DIR}/study2b_smoke/analysis
+FIG_DIR: ${OUTPUT_DIR}/study2b_smoke/figures

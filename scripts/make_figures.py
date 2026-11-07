@@ -16,6 +16,7 @@ from hourglass.config import compose
 STAGES = {
     "study1_open_models": (["analyze_flores", "analyze_ntrex", "figures_stack"], False),
     "study2_synthetic": (["analyze"], False),
+    "study3_natural": (["analyze"], False),
     "study4_frequency": (
         ["s3", "robustness", "mantel", "capacity", "evidence", "shape_v6", "figures", "figures_v6"],
         True,

@@ -1,0 +1,6 @@
+# Study 2b — mô hình kiểu Llama 12 tầng (HF); MoE = Mixtral 8 expert nửa cỡ, top-2 (tham số kích hoạt khớp decoder).
+N_LAYERS: 12
+D_HEAD: 64
+MOE_EXPERTS: 8
+MOE_TOPK: 2
+MOE_AUX: 0.01
